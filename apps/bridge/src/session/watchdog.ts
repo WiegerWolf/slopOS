@@ -6,7 +6,7 @@ export type WatchdogHandle = {
   timer: ReturnType<typeof setTimeout>;
 };
 
-export function startWatchdog(turnId: string, taskId: string, timeoutMs = 60000): WatchdogHandle {
+export function startWatchdog(turnId: string, taskId: string, timeoutMs = 300000): WatchdogHandle {
   const timer = setTimeout(() => {
     appendTurnPart(turnId, {
       id: crypto.randomUUID(),
@@ -22,7 +22,7 @@ export function startWatchdog(turnId: string, taskId: string, timeoutMs = 60000)
   return { turnId, taskId, timer };
 }
 
-export function resetWatchdog(handle: WatchdogHandle, timeoutMs = 60000): WatchdogHandle {
+export function resetWatchdog(handle: WatchdogHandle, timeoutMs = 300000): WatchdogHandle {
   clearTimeout(handle.timer);
   return startWatchdog(handle.turnId, handle.taskId, timeoutMs);
 }

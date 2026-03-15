@@ -1156,6 +1156,14 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
   const handleTurnPart = React.useCallback(async (part: TurnPart) => {
     if (part.kind === "turn_start") {
       setTasks((current) => [part.task, ...current.filter((task) => task.id !== part.task.id)]);
+      setAgentTurn({
+        taskId: part.task.id,
+        intent: part.task.intent,
+        mode: "foreground",
+        statusText: "thinking...",
+        operations: []
+      });
+      setStatusText("thinking...");
       return;
     }
 
@@ -1166,16 +1174,19 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
         detail: `${part.statusText} (${part.plannerSource})`
       });
       setStatusText(part.statusText);
+      setAgentTurn((current) => current ? { ...current, statusText: part.statusText } : current);
       return;
     }
 
     if (part.kind === "tool_call") {
+      const status = `running ${part.tool.name}`;
       pushLog({
         kind: "tool",
         title: `Planner tool ${part.tool.name}`,
         detail: summarizeOutput(part.tool.args)
       });
-      setStatusText(`Running ${part.tool.name}`);
+      setStatusText(status);
+      setAgentTurn((current) => current ? { ...current, statusText: status } : current);
       return;
     }
 
@@ -1253,6 +1264,8 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
 
     if (part.kind === "turn_error") {
       failTask(part.taskId, part.message, part.message);
+      setAgentTurn(undefined);
+      setStatusText(part.message);
       return;
     }
 
@@ -1262,10 +1275,13 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
         title: `Turn completed ${part.taskId}`,
         detail: "Agent turn settled"
       });
+      setAgentTurn(undefined);
     }
   }, [applyOperation, failTask, handleRuntimeError, pushLog, requestCanvasConfirmation, settleConfirmationRecord]);
 
   const submitIntent = React.useCallback(async (intent: string) => {
+    setStatusText("thinking...");
+
     pushLog({
       kind: "intent",
       title: "Invoke intent",
