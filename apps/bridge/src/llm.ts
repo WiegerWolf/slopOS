@@ -660,6 +660,98 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
         }
     }
 
+    // If we still don't have a candidate, try to handle common malformed responses
+    if (!jsonStr) {
+        // Handle responses that start with "Planner" followed by JSON-like content
+        const plannerMatch = rawContent.match(/^Planner[\s\S]*?(\{[\s\S]*\})$/);
+        if (plannerMatch) {
+            jsonStr = plannerMatch[1].trim();
+        }
+        
+        // Handle responses that look like field: value pairs (not in braces)
+        if (!jsonStr) {
+            // Look for patterns like "field: value" or "field\":\"value\""
+            const fieldValueMatches = rawContent.match(/(\w+)\s*:\s*("[^"]*"|[^,\n]+)[,\n]/g);
+            if (fieldValueMatches && fieldValueMatches.length > 0) {
+                // Try to construct a JSON object from field: value pairs
+                try {
+                    const obj: Record<string, unknown> = {};
+                    for (const match of fieldValueMatches) {
+                        const [full, key, value] = match.match(/(\w+)\s*:\s*("[^"]*"|[^,\n]+)[,\n]/) || [];
+                        if (key && value) {
+                            // Clean up the value
+                            let cleanValue = value.trim();
+                            if (cleanValue.startsWith('"') && cleanValue.endsWith('"') && cleanValue.length > 1) {
+                                cleanValue = cleanValue.substring(1, cleanValue.length - 1);
+                            }
+                            obj[key] = cleanValue;
+                        }
+                    }
+                    if (Object.keys(obj).length > 0) {
+                        jsonStr = JSON.stringify(obj);
+                    }
+                } catch (e) {
+                    // If constructing JSON fails, continue to other strategies
+                }
+            }
+        }
+        
+        // Handle plain status messages that could be used as statusText
+        if (!jsonStr) {
+            // Check if this looks like a status message we can use
+            const trimmed = rawContent.trim();
+            if (trimmed.length > 0 && !trimmed.startsWith('{')) {
+                // Try to create a minimal valid PlannerSpec from the status message
+                // This is a fallback when the model returns plain text instead of JSON
+                try {
+                    // Extract what looks like a status message
+                    let statusText = trimmed;
+                    
+                    // Remove common prefixes
+                    if (statusText.startsWith("Planner")) {
+                        statusText = statusText.substring("Planner".length).trim();
+                    }
+                    if (statusText.startsWith("status") || statusText.startsWith("Status")) {
+                        const colonIndex = statusText.indexOf(':');
+                        if (colonIndex !== -1) {
+                            statusText = statusText.substring(colonIndex + 1).trim();
+                        }
+                    }
+                    if (statusText.startsWith("(local)") || statusText.startsWith("(cloud)")) {
+                        const parenEnd = statusText.indexOf(')');
+                        if (parenEnd !== -1) {
+                            statusText = statusText.substring(parenEnd + 1).trim();
+                        }
+                    }
+                    
+                    // Clean up any leading colons or other punctuation
+                    statusText = statusText.replace(/^[\s:\-]+/, '').trim();
+                    
+                    // If we have a reasonable status text, create a minimal spec
+                    if (statusText.length > 0) {
+                        // Create a minimal valid PlannerSpec structure
+                        const minimalSpec = {
+                            statusText: statusText,
+                            summaryTitle: "Task in progress",
+                            summaryLine: statusText,
+                            surface: {
+                                kind: "existing",
+                                moduleId: "coding-workspace", // Default fallback
+                                title: "Working on task",
+                                retention: "pinned"
+                            }
+                        };
+                        
+                        jsonStr = JSON.stringify(minimalSpec);
+                        console.debug("[planner] Constructed minimal JSON from status message:", jsonStr);
+                    }
+                } catch (e) {
+                    // If constructing JSON fails, continue to throw error below
+                }
+            }
+        }
+    }
+
     // If we still don't have a candidate, or it doesn't look like a JSON object, throw an error.
     if (!jsonStr || !jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
         throw new Error(`planner returned invalid JSON: unable to extract JSON object from response: ${rawContent}`);
@@ -680,18 +772,33 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
       } satisfies AgentStep,
       source: "cloud"
     };
-  } catch (err) {
-    console.error("[planner]", err instanceof Error ? err.message : err);
+    } catch (err) {
+      const isJsonError = err instanceof Error && 
+          (err.message.includes("planner returned invalid JSON") || 
+           err.name === "SyntaxError");
 
-    if (mode === "cloud") {
-      throw new Error(`cloud planner failed: ${err instanceof Error ? err.message : String(err)}`);
+      if (isJsonError) {
+        console.debug("[planner]", err.message);
+      } else {
+        console.error("[planner]", err instanceof Error ? err.message : err);
+      }
+
+      if (isJsonError) {
+        return {
+          step: heuristicNextAgentStep(task, context),
+          source: "heuristic_fallback"
+        };
+      }
+
+      if (mode === "cloud") {
+        throw new Error(`cloud planner failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+
+      return {
+        step: heuristicNextAgentStep(task, context),
+        source: "heuristic_fallback"
+      };
     }
-
-    return {
-      step: heuristicNextAgentStep(task, context),
-      source: "heuristic_fallback"
-    };
-  }
 }
 
 export async function planIntentWithCloud(task: Task, context?: PlannerContext) {
