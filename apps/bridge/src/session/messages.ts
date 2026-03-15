@@ -1,5 +1,13 @@
 import type { HistoryRecord } from "./history";
 
+const MAX_TOOL_OUTPUT_CHARS = 4000;
+
+function truncateOutput(value: unknown): string {
+  const str = typeof value === "string" ? value : JSON.stringify(value ?? null);
+  if (str.length <= MAX_TOOL_OUTPUT_CHARS) return str;
+  return str.slice(0, MAX_TOOL_OUTPUT_CHARS) + `\n...[truncated ${str.length - MAX_TOOL_OUTPUT_CHARS} chars]`;
+}
+
 type ProviderMessage = {
   role: string;
   content?: string;
@@ -69,7 +77,7 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
           role: "tool",
           tool_call_id: resultToolCallId,
           name: record.tool,
-          content: JSON.stringify({
+          content: truncateOutput({
             ok: record.ok,
             output: record.output ?? null,
             error: record.error ?? null

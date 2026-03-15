@@ -141,9 +141,21 @@ export async function initializeHistory() {
   }
 }
 
+const MAX_OUTPUT_CHARS = 6000;
+
+function clampRecord(record: HistoryRecord): HistoryRecord {
+  if (record.kind !== "tool_result") return record;
+  const raw = typeof record.output === "string" ? record.output : JSON.stringify(record.output ?? null);
+  if (raw.length <= MAX_OUTPUT_CHARS) return record;
+  return {
+    ...record,
+    output: raw.slice(0, MAX_OUTPUT_CHARS) + `\n...[truncated ${raw.length - MAX_OUTPUT_CHARS} chars]`
+  };
+}
+
 export function appendHistory(sessionKey: string, record: HistoryRecord) {
   const current = historyBySession.get(sessionKey) ?? [];
-  current.push(record);
+  current.push(clampRecord(record));
   historyBySession.set(sessionKey, current.slice(-80));
   schedulePersist();
 }
