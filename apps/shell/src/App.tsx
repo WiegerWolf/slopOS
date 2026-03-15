@@ -11,9 +11,9 @@ const dynamicCache: Record<string, React.LazyExoticComponent<React.ComponentType
 
 function getDynamic(moduleId: string) {
   if (!dynamicCache[moduleId]) {
-    dynamicCache[moduleId] = React.lazy(
-      () => import(/* @vite-ignore */ `../generated/${moduleId}.tsx`)
-    );
+    const importFn = (): Promise<{ default: React.ComponentType<{ data?: Record<string, unknown>; taskId: string; artifactId: string }> }> => 
+      import(`../generated/${moduleId}.tsx`);
+    dynamicCache[moduleId] = React.lazy(importFn);
   }
   return dynamicCache[moduleId];
 }

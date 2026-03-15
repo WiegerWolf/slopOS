@@ -7,6 +7,10 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://127.0.0.1:8787"
+    },
+    watch: {
+      // Ignore all files in the generated runtime directory to prevent hot reloads
+      ignored: ['**/generated/**']
     }
   },
   resolve: {
