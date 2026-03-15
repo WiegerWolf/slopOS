@@ -85,7 +85,7 @@ export function ChronicleItem(props: { title: string; line: string; status: stri
   return (
     <div style={s.chronicleItem}>
       <span style={{ fontSize: 12, fontWeight: 600 }}>{props.title}</span>
-      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{props.status}</span>
+      <span style={{ fontSize: 11, color: "#777" }}>{props.status}</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ export function Meter(props: { value: number; label?: string }) {
   return (
     <div style={s.meterWrap} aria-label={props.label}>
       <div style={{ ...s.meterBar, width: `${Math.max(4, Math.min(100, props.value))}%` }} />
-      {props.label ? <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginLeft: 8 }}>{props.label}</span> : null}
+      {props.label ? <span style={{ fontSize: 11, color: "#888", marginLeft: 8 }}>{props.label}</span> : null}
     </div>
   );
 }
@@ -105,7 +105,7 @@ export function FactGrid(props: { items: Array<{ label: string; value: string }>
     <div style={s.factGrid}>
       {props.items.map((fact) => (
         <div key={fact.label} style={s.factCard}>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>{fact.label}</div>
+          <div style={{ fontSize: 11, color: "#888" }}>{fact.label}</div>
           <div style={{ fontSize: 13 }}>{fact.value}</div>
         </div>
       ))}
@@ -161,7 +161,7 @@ const s: Record<string, React.CSSProperties> = {
   cardSub: {
     margin: "4px 0 0",
     fontSize: 12,
-    color: "rgba(255, 255, 255, 0.35)"
+    color: "#888"
   },
   btn: {
     appearance: "none" as const,
@@ -177,21 +177,21 @@ const s: Record<string, React.CSSProperties> = {
   },
   btnSec: {
     appearance: "none" as const,
-    border: "1px solid rgba(255, 255, 255, 0.06)",
+    border: "1px solid rgba(255, 255, 255, 0.08)",
     borderRadius: 8,
     padding: "8px 14px",
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
     background: "rgba(255, 255, 255, 0.03)",
-    color: "rgba(255, 255, 255, 0.5)",
+    color: "#999",
     fontFamily: "inherit"
   },
   text: {
     margin: 0,
     fontSize: 13,
     lineHeight: 1.55,
-    color: "#e8e4de"
+    color: "#d4d0c8"
   },
   badge: {
     display: "inline-flex",
@@ -249,15 +249,15 @@ const s: Record<string, React.CSSProperties> = {
 };
 
 const tones: Record<Tone, React.CSSProperties> = {
-  primary: { color: "#e8e4de" },
-  secondary: { color: "rgba(200, 120, 100, 0.8)" },
-  accent: { color: "rgba(255, 255, 255, 0.6)" },
-  muted: { color: "rgba(255, 255, 255, 0.3)" }
+  primary: { color: "#d4d0c8" },
+  secondary: { color: "#c88070" },
+  accent: { color: "#aaa" },
+  muted: { color: "#777" }
 };
 
 const badgeTones: Record<Tone, React.CSSProperties> = {
-  primary: { background: "rgba(255, 255, 255, 0.08)", color: "#e8e4de" },
-  secondary: { background: "rgba(200, 120, 100, 0.15)", color: "rgba(200, 120, 100, 0.8)" },
-  accent: { background: "rgba(255, 255, 255, 0.06)", color: "rgba(255, 255, 255, 0.5)" },
-  muted: { background: "rgba(255, 255, 255, 0.04)", color: "rgba(255, 255, 255, 0.3)" }
+  primary: { background: "rgba(255, 255, 255, 0.08)", color: "#d4d0c8" },
+  secondary: { background: "rgba(200, 120, 100, 0.15)", color: "#c88070" },
+  accent: { background: "rgba(255, 255, 255, 0.07)", color: "#aaa" },
+  muted: { background: "rgba(255, 255, 255, 0.04)", color: "#777" }
 };

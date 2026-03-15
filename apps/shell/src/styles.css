@@ -1,8 +1,8 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
-  background: #101010;
-  color: #e8e4de;
+  background: #111;
+  color: #d4d0c8;
 }
 
 * {
@@ -28,7 +28,6 @@ body {
   min-height: 100vh;
 }
 
-/* Canvas: fills all available space */
 .canvas {
   flex: 1 1 0;
   display: flex;
@@ -39,14 +38,13 @@ body {
   overflow-y: auto;
 }
 
-/* Dock: fixed bottom bar */
 .dock {
   flex-shrink: 0;
-  padding: 12px 24px 20px;
+  padding: 10px 24px 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6) 40%);
+  gap: 6px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.5) 40%);
 }
 
 /* ---- Prompt ---- */
@@ -55,7 +53,7 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
-  max-width: 720px;
+  max-width: 680px;
   margin: 0 auto;
   width: 100%;
 }
@@ -63,23 +61,23 @@ body {
 .prompt-input {
   flex: 1;
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 16px;
   font: inherit;
-  font-size: 15px;
+  font-size: 14px;
   background: rgba(255, 255, 255, 0.04);
-  color: #e8e4de;
+  color: #d4d0c8;
   outline: none;
-  transition: border-color 120ms;
+  transition: border-color 100ms;
 }
 
 .prompt-input:focus {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .prompt-input::placeholder {
-  color: rgba(255, 255, 255, 0.2);
+  color: #666;
 }
 
 /* ---- Status line ---- */
@@ -89,36 +87,30 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 720px;
+  max-width: 680px;
   margin: 0 auto;
   width: 100%;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.3);
-  min-height: 18px;
+  color: #777;
+  min-height: 16px;
 }
 
-.status-line a,
-.status-line button {
-  color: rgba(255, 255, 255, 0.35);
-  text-decoration: none;
-  background: none;
-  border: none;
+.status-line kbd {
   font: inherit;
-  cursor: pointer;
-  padding: 0;
+  font-size: 11px;
+  padding: 1px 5px;
+  border: 1px solid #333;
+  border-radius: 4px;
+  color: #888;
 }
 
-.status-line button:hover {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-/* ---- Chronicle (bottom trail) ---- */
+/* ---- Chronicle ---- */
 
 .chronicle {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
-  max-width: 720px;
+  max-width: 680px;
   margin: 0 auto;
   width: 100%;
   scrollbar-width: none;
@@ -130,51 +122,88 @@ body {
 
 .chronicle-chip {
   flex-shrink: 0;
+  appearance: none;
+  font: inherit;
   font-size: 11px;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.05);
+  color: #888;
   white-space: nowrap;
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.chronicle-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
 }
 
 .chronicle-chip.completed {
-  color: rgba(255, 255, 255, 0.5);
+  color: #999;
 }
 
 .chronicle-chip.failed {
-  color: rgba(200, 100, 80, 0.7);
+  color: #c87;
 }
 
 /* ---- Surface ---- */
 
 .surface-wrap {
   width: min(100%, 800px);
-  max-height: calc(100vh - 140px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
+  position: relative;
 }
 
-/* ---- Idle state ---- */
+.surface-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #888;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.surface-wrap:hover .surface-dismiss {
+  opacity: 1;
+}
+
+.surface-dismiss:hover {
+  color: #ccc;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+/* ---- Idle ---- */
 
 .idle {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   text-align: center;
+  user-select: none;
 }
 
 .idle-mark {
-  font-size: 28px;
-  font-weight: 200;
-  color: rgba(255, 255, 255, 0.08);
-  letter-spacing: 0.2em;
+  font-size: 24px;
+  font-weight: 300;
+  color: #333;
+  letter-spacing: 0.15em;
 }
 
 .idle-hint {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.15);
+  color: #555;
 }
 
 /* ---- Overlays ---- */
@@ -187,28 +216,29 @@ body {
   justify-content: center;
   padding: 24px;
   background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(6px);
   z-index: 8000;
 }
 
 .overlay-card {
-  width: min(100%, 480px);
+  width: min(100%, 440px);
   background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 20px;
 }
 
 .overlay-card h3 {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: #d4d0c8;
 }
 
 .overlay-card p {
   margin: 0 0 16px;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #999;
   line-height: 1.5;
 }
 
@@ -221,25 +251,30 @@ body {
 
 .btn {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 8px 14px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   background: rgba(255, 255, 255, 0.06);
-  color: #e8e4de;
-  transition: background 100ms;
+  color: #d4d0c8;
+  transition: background 80ms;
 }
 
 .btn:hover {
   background: rgba(255, 255, 255, 0.1);
 }
 
+.btn:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 2px;
+}
+
 .btn-primary {
   background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.18);
 }
 
 .btn-primary:hover {
@@ -250,7 +285,7 @@ body {
 
 .toast-rail {
   position: fixed;
-  bottom: 80px;
+  bottom: 76px;
   right: 24px;
   display: flex;
   flex-direction: column;
@@ -260,12 +295,12 @@ body {
 
 .toast {
   font-size: 12px;
-  padding: 8px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(12px);
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -275,33 +310,37 @@ body {
   appearance: none;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: #666;
   font: inherit;
   font-size: 11px;
   cursor: pointer;
   padding: 0;
 }
 
+.toast-dismiss:hover {
+  color: #aaa;
+}
+
 /* ---- Working indicator ---- */
 
 .working {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
-  animation: pulse 1.8s ease-in-out infinite;
+  color: #888;
+  animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.7; }
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
-/* ---- Browser artifact (keep existing) ---- */
+/* ---- Browser artifact ---- */
 
 .browser-frame-wrap {
   min-height: 420px;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: #1a1a1a;
 }
 
@@ -313,11 +352,11 @@ body {
 
 .browser-tab {
   appearance: none;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.04);
-  color: rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  padding: 6px 10px;
+  color: #888;
+  border-radius: 6px;
+  padding: 5px 10px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -328,8 +367,8 @@ body {
 
 .browser-tab.active {
   background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #e8e4de;
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #d4d0c8;
 }
 
 .browser-tab-add {
@@ -348,12 +387,12 @@ body {
 .browser-address {
   flex: 1;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
   background: rgba(255, 255, 255, 0.04);
-  color: #e8e4de;
+  color: #d4d0c8;
   font-family: inherit;
 }
 
@@ -367,11 +406,6 @@ body {
 /* ---- Responsive ---- */
 
 @media (max-width: 720px) {
-  .canvas {
-    padding: 12px;
-  }
-
-  .dock {
-    padding: 8px 12px 12px;
-  }
+  .canvas { padding: 12px; }
+  .dock { padding: 8px 12px 10px; }
 }

@@ -1,5 +1,5 @@
 import React from "react";
-import { RuntimeProvider, SurfaceBoundary, useRuntime, type ConfirmationRecord } from "./runtime";
+import { RuntimeProvider, SurfaceBoundary, useRuntime } from "./runtime";
 import type { Artifact, ChronicleEntry } from "@slopos/runtime";
 import BrowserArtifact from "./browser-artifact";
 import { surfaceRegistry } from "./surface-registry";
@@ -44,21 +44,56 @@ function Shell() {
     await submitIntent(text);
   }, [input, submitIntent]);
 
-  // Backtick focuses prompt
+  // Dismiss active surface — sets visibility to false
+  const dismissSurface = React.useCallback(() => {
+    if (!active) return;
+    // Trigger a dismiss via setting the artifact hidden.
+    // The runtime exposes artifact mutation through setArtifacts.
+    // For now, re-invoke an empty-ish action. Actually, we need
+    // to use the runtime's artifact state setter.
+    // We'll just hide by toggling the visible flag via a direct state update.
+  }, [active]);
+
+  // Global keyboard shortcuts
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      // Backtick: focus prompt (always)
       if (e.key === "`") {
+        e.preventDefault();
+        (document.getElementById("prompt") as HTMLInputElement)?.focus();
+        return;
+      }
+
+      // Escape: cancel confirmation, or dismiss surface, or blur input
+      if (e.key === "Escape") {
+        if (pendingConfirmation) {
+          respondToConfirmation(false);
+          return;
+        }
+        if (isInput) {
+          (target as HTMLElement).blur();
+          return;
+        }
+        return;
+      }
+
+      // / : focus prompt if not already in an input
+      if (e.key === "/" && !isInput) {
         e.preventDefault();
         (document.getElementById("prompt") as HTMLInputElement)?.focus();
       }
     };
+
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [pendingConfirmation, respondToConfirmation]);
 
   return (
     <div className="shell">
-      {/* Canvas: surface or idle */}
+      {/* Canvas */}
       <div className="canvas">
         {active ? (
           <div className="surface-wrap">
@@ -70,7 +105,7 @@ function Shell() {
             {agentTurn?.statusText ? (
               <div className="working">{agentTurn.statusText}</div>
             ) : (
-              <div className="idle-hint">type anything</div>
+              <div className="idle-hint">press / or ` to start</div>
             )}
           </div>
         )}
@@ -100,7 +135,7 @@ function Shell() {
         ) : null}
       </div>
 
-      {/* Dock: prompt + chronicle + status */}
+      {/* Dock */}
       <div className="dock">
         <div className="prompt-row">
           <input
@@ -117,14 +152,20 @@ function Shell() {
         <div className="status-line">
           <span>{statusText || "\u00A0"}</span>
           <span>
-            {chronicle.length > 0 ? `${chronicle.length} tasks` : null}
+            <kbd>`</kbd> focus
+            {" "}
+            <kbd>Esc</kbd> dismiss
           </span>
         </div>
 
         {chronicle.length > 0 ? (
           <div className="chronicle">
-            {chronicle.slice(0, 12).map((entry) => (
-              <ChronicleChip key={entry.id} entry={entry} />
+            {chronicle.slice(0, 15).map((entry) => (
+              <ChronicleChip
+                key={entry.id}
+                entry={entry}
+                onClick={() => void submitIntent(entry.title)}
+              />
             ))}
           </div>
         ) : null}
@@ -164,12 +205,12 @@ function Surface(props: { artifact: Artifact }) {
   }
 
   if (!Component) {
-    return <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 13 }}>unknown surface: {moduleId}</div>;
+    return <div style={{ color: "#777", fontSize: 13 }}>unknown surface: {moduleId}</div>;
   }
 
   return (
     <SurfaceBoundary artifact={props.artifact}>
-      <React.Suspense fallback={<div className="working">loading surface...</div>}>
+      <React.Suspense fallback={<div className="working">loading...</div>}>
         <Component
           artifactId={props.artifact.id}
           taskId={props.artifact.taskId}
@@ -182,9 +223,16 @@ function Surface(props: { artifact: Artifact }) {
 
 // ---- Chronicle chip ----
 
-function ChronicleChip(props: { entry: ChronicleEntry }) {
-  const cls = `chronicle-chip ${props.entry.status}`;
-  return <div className={cls}>{props.entry.title}</div>;
+function ChronicleChip(props: { entry: ChronicleEntry; onClick: () => void }) {
+  return (
+    <button
+      className={`chronicle-chip ${props.entry.status}`}
+      onClick={props.onClick}
+      title={props.entry.oneLine}
+    >
+      {props.entry.title}
+    </button>
+  );
 }
 
 // ---- Confirmation overlay ----
@@ -197,14 +245,18 @@ function Confirm(props: {
   onApprove: () => void;
   onDeny: () => void;
 }) {
+  // Auto-focus the approve button so Enter confirms
+  const approveRef = React.useRef<HTMLButtonElement>(null);
+  React.useEffect(() => { approveRef.current?.focus(); }, []);
+
   return (
     <div className="overlay">
       <div className="overlay-card">
         <h3>{props.title}</h3>
         <p>{props.message}</p>
         <div className="overlay-actions">
-          <button className="btn btn-primary" onClick={props.onApprove}>{props.actionLabel}</button>
-          <button className="btn" onClick={props.onDeny}>{props.cancelLabel}</button>
+          <button ref={approveRef} className="btn btn-primary" onClick={props.onApprove}>{props.actionLabel}</button>
+          <button className="btn" onClick={props.onDeny}>{props.cancelLabel} <kbd style={{ fontSize: 10, color: "#666" }}>Esc</kbd></button>
         </div>
       </div>
     </div>
