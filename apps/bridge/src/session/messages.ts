@@ -100,17 +100,40 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
     }
   }
 
-  // Also drop tool_call messages whose tool_result was sliced off — the API
+  // Drop tool_call messages whose tool_result was sliced off — the API
   // may reject an assistant tool_calls message with no matching tool response.
   const resultIds = new Set<string>();
   for (const msg of messages) {
     if (msg.role === "tool" && msg.tool_call_id) resultIds.add(msg.tool_call_id);
   }
 
-  return messages.filter((msg) => {
+  const filtered = messages.filter((msg) => {
     if (msg.role === "assistant" && msg.tool_calls?.length) {
       return msg.tool_calls.every((tc) => resultIds.has(tc.id));
     }
     return true;
   });
+
+  // Merge consecutive assistant messages. APIs require that a tool-role
+  // message is immediately preceded by an assistant message with tool_calls.
+  // Without merging, a planner content message followed by a tool_call
+  // message creates two separate assistant entries, breaking this contract.
+  const merged: ProviderMessage[] = [];
+  for (const msg of filtered) {
+    const prev = merged[merged.length - 1];
+    if (prev && prev.role === "assistant" && msg.role === "assistant") {
+      // Merge content
+      if (msg.content) {
+        prev.content = prev.content ? `${prev.content}\n${msg.content}` : msg.content;
+      }
+      // Merge tool_calls
+      if (msg.tool_calls?.length) {
+        prev.tool_calls = [...(prev.tool_calls ?? []), ...msg.tool_calls];
+      }
+    } else {
+      merged.push({ ...msg });
+    }
+  }
+
+  return merged;
 }
