@@ -31,7 +31,7 @@ function turnPartBase(turnId: string, taskId: string) {
 }
 
 export function beginTurn(task: Task, context: PlannerContext | undefined, runTool: ToolRunner, sessionKey = "default", options?: TurnOptions) {
-  const turn = createTurn(task);
+  const turn = createTurn(task, sessionKey);
 
   appendHistory(sessionKey, {
     kind: "user_intent",

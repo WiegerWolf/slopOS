@@ -1,5 +1,4 @@
-import { appendFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { dbInsertAudit } from "../db";
 
 export type AuditEntry = {
   timestamp: number;
@@ -10,22 +9,13 @@ export type AuditEntry = {
   detail?: string;
 };
 
-const AUDIT_DIR = join(process.env.HOME ?? "/tmp", ".slopos");
-const AUDIT_PATH = join(AUDIT_DIR, "audit.jsonl");
-
-let initialized = false;
-
-async function ensureDir() {
-  if (initialized) return;
-  await mkdir(AUDIT_DIR, { recursive: true });
-  initialized = true;
-}
-
-export async function appendAuditEntry(entry: AuditEntry) {
-  try {
-    await ensureDir();
-    await appendFile(AUDIT_PATH, JSON.stringify(entry) + "\n", "utf8");
-  } catch {
-    // audit is best-effort; never crash the bridge
-  }
+export function appendAuditEntry(entry: AuditEntry) {
+  dbInsertAudit(
+    entry.timestamp,
+    entry.turnId ?? null,
+    entry.taskId ?? null,
+    entry.action,
+    entry.tool ?? null,
+    entry.detail ?? null
+  );
 }

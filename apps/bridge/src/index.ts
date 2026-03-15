@@ -6,7 +6,7 @@ import { getTerminalSnapshot, handleToolCall, type EventState } from "./tools";
 import { planIntentWithCloud, type PlannerContext } from "./llm";
 import { appendBrowserEvent, drainBrowserCommands, getBrowserEvents, subscribeBrowserCommands, subscribeBrowserEvents, syncBrowserSessions, type BrowserSessionSnapshot } from "./browser-session-store";
 import { getSloposSessionEvents, subscribeSloposSessionEvents, syncSloposSession, type SloposSessionSnapshot } from "./slopos-session-store";
-import { getHistoryFilePath, initializeHistory } from "./session/history";
+import { initDb } from "./db";
 import { beginTurn } from "./session/loop";
 import { getTurn, resolveTurnConfirmation, subscribeTurn } from "./session/store";
 import { pollBluetoothState } from "./adapter/bluetooth";
@@ -273,7 +273,7 @@ async function writeSurfaceModule(body: {
 }
 
 await mkdir(generatedRuntimeRoot, { recursive: true });
-await initializeHistory();
+initDb();
 
 // Start adapter polling
 pollBluetoothState(eventState, 5000);
@@ -575,4 +575,3 @@ Bun.serve({
 });
 
 console.log("slopOS bridge listening on http://127.0.0.1:8787");
-console.log(`slopOS bridge history file ${getHistoryFilePath()}`);

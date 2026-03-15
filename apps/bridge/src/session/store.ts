@@ -1,8 +1,10 @@
 import type { Task, TurnPart } from "@slopos/runtime";
+import { dbInsertTurn, dbCloseTurn, dbInsertTurnPart, dbGetTurn, dbGetTurnParts } from "../db";
 
 type TurnRecord = {
   id: string;
   createdAt: number;
+  sessionKey: string;
   task: Task;
   parts: TurnPart[];
   closed: boolean;
@@ -15,10 +17,11 @@ type TurnRecord = {
 
 const turns = new Map<string, TurnRecord>();
 
-export function createTurn(task: Task) {
+export function createTurn(task: Task, sessionKey = "default") {
   const record: TurnRecord = {
     id: crypto.randomUUID(),
     createdAt: Date.now(),
+    sessionKey,
     task,
     parts: [],
     closed: false,
@@ -26,11 +29,35 @@ export function createTurn(task: Task) {
   };
 
   turns.set(record.id, record);
+
+  // Persist to SQLite
+  dbInsertTurn(record.id, task.id, sessionKey, record.createdAt, JSON.stringify(task));
+
   return record;
 }
 
 export function getTurn(turnId: string) {
-  return turns.get(turnId);
+  // Check in-memory first (active turns)
+  const inMemory = turns.get(turnId);
+  if (inMemory) return inMemory;
+
+  // Fall back to SQLite for completed turns from previous sessions
+  const row = dbGetTurn(turnId);
+  if (!row) return undefined;
+
+  const restored: TurnRecord = {
+    id: row.id,
+    createdAt: row.created_at,
+    sessionKey: row.session_key,
+    task: JSON.parse(row.task_json),
+    parts: dbGetTurnParts(turnId),
+    closed: row.closed === 1,
+    subscribers: new Set()
+  };
+
+  // Cache in memory for repeated access
+  turns.set(turnId, restored);
+  return restored;
 }
 
 export function appendTurnPart(turnId: string, part: TurnPart) {
@@ -39,7 +66,12 @@ export function appendTurnPart(turnId: string, part: TurnPart) {
     return;
   }
 
+  const seq = turn.parts.length;
   turn.parts.push(part);
+
+  // Persist to SQLite
+  dbInsertTurnPart(part.id, turnId, seq, JSON.stringify(part));
+
   for (const subscriber of turn.subscribers) {
     subscriber(part);
   }
@@ -52,6 +84,9 @@ export function closeTurn(turnId: string) {
   }
 
   turn.closed = true;
+
+  // Persist to SQLite
+  dbCloseTurn(turnId);
 }
 
 export function waitForTurnConfirmation(turnId: string, confirmationId: string) {

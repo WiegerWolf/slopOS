@@ -1,6 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { CONTRACT_VERSIONS } from "@slopos/runtime";
+import { dbInsertHistory, dbGetRecentHistory, dbGetHistoryCount, dbPruneHistory } from "../db";
 
 type HistoryRecord =
   | {
@@ -49,99 +47,10 @@ type HistoryRecord =
       message: string;
     };
 
-const historyBySession = new Map<string, HistoryRecord[]>();
-const historyFile = join("/home/n/slopos", ".slopos", "bridge-history.json");
-const legacyHistoryFile = join("/home/n/slopos", ".pilot", "bridge-history.json");
-
-type PersistedHistoryEnvelope = {
-  version: number;
-  sessions: Record<string, HistoryRecord[]>;
-};
-
-function migrateHistoryEnvelope(
-  input: PersistedHistoryEnvelope | Record<string, HistoryRecord[]>,
-): PersistedHistoryEnvelope | null {
-  if (!input || typeof input !== "object") {
-    return null;
-  }
-
-  if ("version" in input && "sessions" in input) {
-    const envelope = input as PersistedHistoryEnvelope;
-    if (envelope.version > CONTRACT_VERSIONS.bridgeHistory) {
-      return null;
-    }
-
-    if (envelope.version === CONTRACT_VERSIONS.bridgeHistory) {
-      return envelope;
-    }
-
-    return {
-      version: CONTRACT_VERSIONS.bridgeHistory,
-      sessions: envelope.sessions ?? {}
-    };
-  }
-
-  return {
-    version: CONTRACT_VERSIONS.bridgeHistory,
-    sessions: input as Record<string, HistoryRecord[]>
-  };
-}
-
-let persistChain = Promise.resolve();
-
-function serializeHistory() {
-  return JSON.stringify(
-    {
-      version: CONTRACT_VERSIONS.bridgeHistory,
-      sessions: Object.fromEntries(historyBySession.entries())
-    } satisfies PersistedHistoryEnvelope,
-    null,
-    2
-  );
-}
-
-async function persistHistory() {
-  const tmpFile = `${historyFile}.tmp`;
-  await mkdir(dirname(historyFile), { recursive: true });
-  await writeFile(tmpFile, serializeHistory(), "utf8");
-  await rename(tmpFile, historyFile);
-}
-
-function schedulePersist() {
-  persistChain = persistChain
-    .catch(() => undefined)
-    .then(() => persistHistory())
-    .catch(() => undefined);
-}
-
-export async function initializeHistory() {
-  try {
-    let raw: string;
-    try {
-      raw = await readFile(historyFile, "utf8");
-    } catch {
-      raw = await readFile(legacyHistoryFile, "utf8");
-    }
-    const parsed = JSON.parse(raw) as PersistedHistoryEnvelope | Record<string, HistoryRecord[]>;
-    const migrated = migrateHistoryEnvelope(parsed);
-    if (!migrated) {
-      return;
-    }
-    const sessions = migrated.sessions;
-
-    for (const [sessionKey, records] of Object.entries(sessions)) {
-      historyBySession.set(
-        sessionKey,
-        Array.isArray(records) ? records.slice(-80) : []
-      );
-    }
-    schedulePersist();
-  } catch {
-    return;
-  }
-}
-
+const MAX_HISTORY_PER_SESSION = 80;
 const MAX_OUTPUT_CHARS = 6000;
+
+let appendsSincePrune = 0;
 
 function clampRecord(record: HistoryRecord): HistoryRecord {
   if (record.kind !== "tool_result") return record;
@@ -154,30 +63,27 @@ function clampRecord(record: HistoryRecord): HistoryRecord {
 }
 
 export function appendHistory(sessionKey: string, record: HistoryRecord) {
-  const current = historyBySession.get(sessionKey) ?? [];
-  current.push(clampRecord(record));
-  historyBySession.set(sessionKey, current.slice(-80));
-  schedulePersist();
+  const clamped = clampRecord(record);
+  dbInsertHistory(sessionKey, clamped.kind, clamped.taskId, clamped.timestamp, JSON.stringify(clamped));
+
+  // Prune every 10 appends to keep the table bounded
+  appendsSincePrune += 1;
+  if (appendsSincePrune >= 10) {
+    appendsSincePrune = 0;
+    dbPruneHistory(sessionKey, MAX_HISTORY_PER_SESSION);
+  }
 }
 
 export function getRecentHistory(sessionKey: string, limit = 24) {
-  const current = historyBySession.get(sessionKey) ?? [];
-  return current.slice(-limit);
-}
-
-export function getHistoryFilePath() {
-  return historyFile;
+  return dbGetRecentHistory(sessionKey, limit) as HistoryRecord[];
 }
 
 export function getHistoryDiagnostics() {
-  const sessions = Array.from(historyBySession.entries());
+  // Lightweight — just report for the default session
+  const count = dbGetHistoryCount("default");
   return {
-    sessionCount: sessions.length,
-    recordsBySession: sessions.map(([sessionKey, records]) => ({
-      sessionKey,
-      recordCount: records.length,
-      latestTimestamp: records[records.length - 1]?.timestamp
-    }))
+    sessionCount: 1,
+    recordsBySession: [{ sessionKey: "default", recordCount: count }]
   };
 }
 

@@ -1,5 +1,5 @@
 import { CONTRACT_VERSIONS, listCoreSurfaceDescriptors, listToolDescriptors } from "@slopos/runtime";
-import { getHistoryDiagnostics, getHistoryFilePath } from "../session/history";
+import { getHistoryDiagnostics } from "../session/history";
 import { getTurnDiagnostics } from "../session/store";
 import { getSloposSession, listSloposSessions } from "../slopos-session-store";
 import type { ToolDefinition } from "./types";
@@ -40,7 +40,7 @@ export const sloposRuntimeDiagnosticsTool: ToolDefinition = {
           turnParts: CONTRACT_VERSIONS.turnParts
         },
         history: {
-          filePath: getHistoryFilePath(),
+          store: "sqlite (~/.slopos/slopos.db)",
           ...getHistoryDiagnostics()
         },
         turns: getTurnDiagnostics(),
