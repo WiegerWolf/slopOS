@@ -2,6 +2,9 @@ export type ToolSafety = "read_only" | "stateful" | "destructive";
 
 export type ToolId =
   | "app_launch"
+  | "app_list"
+  | "audio_control"
+  | "audio_status"
   | "browser_active_tab"
   | "browser_recent_events"
   | "browser_workspace_claim"
@@ -12,6 +15,8 @@ export type ToolId =
   | "browser_workspace_detail"
   | "fs_read"
   | "fs_write"
+  | "network_control"
+  | "network_status"
   | "pty_close"
   | "pty_open"
   | "pty_snapshot"
@@ -33,6 +38,21 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     id: "app_launch",
     description: "Launches desktop app",
     safety: "stateful"
+  },
+  app_list: {
+    id: "app_list",
+    description: "Lists available desktop apps and tracked launched processes",
+    safety: "read_only"
+  },
+  audio_control: {
+    id: "audio_control",
+    description: "Controls audio: set volume, mute, default sink/source",
+    safety: "stateful"
+  },
+  audio_status: {
+    id: "audio_status",
+    description: "Returns current audio sinks, sources, and volume levels",
+    safety: "read_only"
   },
   browser_active_tab: {
     id: "browser_active_tab",
@@ -85,6 +105,17 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     safety: "destructive",
     mayRequireConfirmation: true
   },
+  network_control: {
+    id: "network_control",
+    description: "Controls network: connect/disconnect WiFi, scan",
+    safety: "stateful",
+    mayRequireConfirmation: true
+  },
+  network_status: {
+    id: "network_status",
+    description: "Returns active network connections and WiFi networks",
+    safety: "read_only"
+  },
   pty_close: {
     id: "pty_close",
     description: "Closes PTY session",
@@ -123,7 +154,7 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
   },
   system_control: {
     id: "system_control",
-    description: "Runs mocked system control actions",
+    description: "Runs system control actions (bluetooth, panic dismiss)",
     safety: "destructive",
     mayRequireConfirmation: true
   }

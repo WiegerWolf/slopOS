@@ -204,6 +204,18 @@ function sanitizeExistingModuleId(input: unknown): ExistingModuleId | undefined 
 }
 
 function buildExistingSurfaceData(moduleId: ExistingModuleId, task: Task, input?: Record<string, unknown>) {
+  if (moduleId === "audio-mixer") {
+    return {};
+  }
+
+  if (moduleId === "network-panel") {
+    return {};
+  }
+
+  if (moduleId === "panic-overlay") {
+    return {};
+  }
+
   if (moduleId === "bluetooth-connect-flow") {
     return {
       deviceHint: typeof input?.deviceHint === "string" ? input.deviceHint : "Sony headset likely to appear first"
@@ -343,6 +355,14 @@ function makeSummaryTitle(intent: string) {
 
   if (intent.toLowerCase().includes("bluetooth") || intent.toLowerCase().includes("headset")) {
     return "Connect Bluetooth headset";
+  }
+
+  if (intent.toLowerCase().includes("volume") || intent.toLowerCase().includes("audio") || intent.toLowerCase().includes("sound")) {
+    return "Opened audio mixer";
+  }
+
+  if (intent.toLowerCase().includes("wifi") || intent.toLowerCase().includes("network")) {
+    return "Opened network panel";
   }
 
   if (intent.toLowerCase().includes("code") || intent.toLowerCase().includes("coding")) {
@@ -490,6 +510,40 @@ export function heuristicNextAgentStep(task: Task, context?: PlannerRuntimeConte
             repo: "/home/n/slopos",
             docsUrl: "https://vite.dev/guide/"
           }
+        }
+      }
+    };
+  }
+
+  if (normalized.includes("volume") || normalized.includes("mute") || normalized.includes("sound") || normalized.includes("audio") || normalized.includes("speaker")) {
+    return {
+      kind: "final",
+      spec: {
+        statusText: "Opening the audio mixer",
+        summaryTitle: "Opened audio mixer",
+        summaryLine: "Surfaced the audio mixer for volume and device control.",
+        surface: {
+          kind: "existing",
+          moduleId: "audio-mixer",
+          title: coreSurfaceDescriptors["audio-mixer"].title,
+          retention: "pinned"
+        }
+      }
+    };
+  }
+
+  if (normalized.includes("wifi") || normalized.includes("network") || normalized.includes("internet") || normalized.includes("connect to")) {
+    return {
+      kind: "final",
+      spec: {
+        statusText: "Opening the network panel",
+        summaryTitle: "Opened network panel",
+        summaryLine: "Surfaced the network panel for connection management.",
+        surface: {
+          kind: "existing",
+          moduleId: "network-panel",
+          title: coreSurfaceDescriptors["network-panel"].title,
+          retention: "pinned"
         }
       }
     };

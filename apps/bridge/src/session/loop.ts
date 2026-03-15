@@ -3,14 +3,21 @@ import { planIntentFromSpec, type PlannerRuntimeContext, type PlannerSpec } from
 import { nextAgentStepWithCloud } from "../llm";
 import { appendHistory, getRecentHistory } from "./history";
 import { appendTurnPart, closeTurn, createTurn, waitForTurnConfirmation } from "./store";
+import { startWatchdog, resetWatchdog, stopWatchdog } from "./watchdog";
+import { appendAuditEntry } from "./audit";
+import { recordTurnSuccess, recordTurnFailure } from "./panic";
 import type { Task, TurnPart } from "@slopos/runtime";
-import type { ToolResult } from "../tool/types";
+import type { EventState, ToolResult } from "../tool/types";
 
 type ToolRunner = (input: {
   name: string;
   args?: Record<string, unknown>;
   options?: Record<string, unknown>;
 }) => Promise<ToolResult>;
+
+type TurnOptions = {
+  eventState?: EventState;
+};
 
 const MAX_PLANNER_ITERATIONS = 4;
 
@@ -23,7 +30,7 @@ function turnPartBase(turnId: string, taskId: string) {
   };
 }
 
-export function beginTurn(task: Task, context: PlannerContext | undefined, runTool: ToolRunner, sessionKey = "default") {
+export function beginTurn(task: Task, context: PlannerContext | undefined, runTool: ToolRunner, sessionKey = "default", options?: TurnOptions) {
   const turn = createTurn(task);
 
   appendHistory(sessionKey, {
@@ -39,7 +46,15 @@ export function beginTurn(task: Task, context: PlannerContext | undefined, runTo
     task
   });
 
-  void runTurn(turn.id, task, context, runTool, sessionKey);
+  void appendAuditEntry({
+    timestamp: Date.now(),
+    turnId: turn.id,
+    taskId: task.id,
+    action: "turn_start",
+    detail: task.intent
+  });
+
+  void runTurn(turn.id, task, context, runTool, sessionKey, options);
 
   return turn;
 }
@@ -49,8 +64,11 @@ async function runTurn(
   task: Task,
   context: PlannerContext | undefined,
   runTool: ToolRunner,
-  sessionKey: string
+  sessionKey: string,
+  options?: TurnOptions
 ) {
+  let watchdog = startWatchdog(turnId, task.id);
+
   try {
     const toolResults: PlannerRuntimeContext["toolResults"] = [];
     let spec: PlannerSpec | undefined;
@@ -125,6 +143,15 @@ async function runTurn(
           }
         });
 
+        void appendAuditEntry({
+          timestamp: Date.now(),
+          turnId,
+          taskId: task.id,
+          action: "tool_call",
+          tool: tool.name,
+          detail: JSON.stringify(tool.args)
+        });
+
         const result = await runTool({
           name: tool.name,
           args: tool.args,
@@ -160,6 +187,17 @@ async function runTurn(
           error: result.error
         });
 
+        watchdog = resetWatchdog(watchdog);
+
+        void appendAuditEntry({
+          timestamp: Date.now(),
+          turnId,
+          taskId: task.id,
+          action: "tool_result",
+          tool: tool.name,
+          detail: result.ok ? "ok" : (result.error ?? "failed")
+        });
+
         if (!result.ok) {
           appendHistory(sessionKey, {
             kind: "error",
@@ -168,6 +206,32 @@ async function runTurn(
             message: result.error ?? `${tool.name} failed`
           });
           if (!result.confirmationRequired) {
+            // Single retry for non-confirmation failures
+            const retryResult = await runTool({
+              name: tool.name,
+              args: tool.args,
+              options: tool.options
+            });
+            watchdog = resetWatchdog(watchdog);
+
+            if (retryResult.ok) {
+              toolResults[toolResults.length - 1] = {
+                name: tool.name,
+                ok: retryResult.ok,
+                output: retryResult.output,
+                error: retryResult.error
+              };
+              void appendAuditEntry({
+                timestamp: Date.now(),
+                turnId,
+                taskId: task.id,
+                action: "tool_retry_success",
+                tool: tool.name
+              });
+              shouldReplan = true;
+              break;
+            }
+
             appendTurnPart(turnId, {
               ...turnPartBase(turnId, task.id),
               kind: "turn_error",
@@ -326,19 +390,41 @@ async function runTurn(
       ...turnPartBase(turnId, task.id),
       kind: "turn_complete"
     });
+    recordTurnSuccess();
+
+    void appendAuditEntry({
+      timestamp: Date.now(),
+      turnId,
+      taskId: task.id,
+      action: "turn_complete"
+    });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "turn failed";
     appendHistory(sessionKey, {
       kind: "error",
       timestamp: Date.now(),
       taskId: task.id,
-      message: error instanceof Error ? error.message : "turn failed"
+      message
     });
     appendTurnPart(turnId, {
       ...turnPartBase(turnId, task.id),
       kind: "turn_error",
-      message: error instanceof Error ? error.message : "turn failed"
+      message
+    });
+
+    if (options?.eventState) {
+      recordTurnFailure(options.eventState, message);
+    }
+
+    void appendAuditEntry({
+      timestamp: Date.now(),
+      turnId,
+      taskId: task.id,
+      action: "turn_error",
+      detail: message
     });
   } finally {
+    stopWatchdog(watchdog);
     closeTurn(turnId);
   }
 }

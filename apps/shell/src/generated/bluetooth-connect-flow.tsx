@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Card, Column, Meter, Text } from "@slopos/ui";
+import { Button, Card, Column, Meter, Row, Text } from "@slopos/ui";
 import { useEvent, useHost, type SurfaceProps } from "@slopos/host";
 
 type BluetoothDevice = {
@@ -68,6 +68,38 @@ export default function BluetoothConnectFlow(
         {!devices.length ? (
           <Text tone="muted">No audio devices surfaced yet. Keep scanning or retry from the prompt.</Text>
         ) : null}
+        <Row gap={8}>
+          <Button
+            tone="secondary"
+            onClick={async () => {
+              await host.tool("system_control", {
+                action: bluetooth?.scanning ? "bluetooth.scan_stop" : "bluetooth.scan_start"
+              });
+              host.logStatus(bluetooth?.scanning ? "Scan stopped" : "Scanning for devices...");
+            }}
+          >
+            {bluetooth?.scanning ? "Stop Scan" : "Scan"}
+          </Button>
+          {devices.filter((d) => d.connected).map((device) => (
+            <Button
+              key={`dc-${device.id}`}
+              tone="secondary"
+              onClick={async () => {
+                await host.tool(
+                  "system_control",
+                  {
+                    action: "bluetooth.disconnect_device",
+                    args: { id: device.id }
+                  },
+                  { confirm: true }
+                );
+                host.logStatus(`Disconnected ${device.name}`);
+              }}
+            >
+              Disconnect {device.name}
+            </Button>
+          ))}
+        </Row>
         {props.data?.deviceHint ? (
           <Text tone="accent">Hint from planner: {props.data.deviceHint}</Text>
         ) : null}

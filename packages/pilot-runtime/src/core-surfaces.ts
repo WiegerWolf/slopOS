@@ -1,8 +1,11 @@
 export type CoreSurfaceId =
+  | "audio-mixer"
   | "bluetooth-connect-flow"
   | "browser-inspector"
   | "coding-workspace"
   | "diagnostics-inspector"
+  | "network-panel"
+  | "panic-overlay"
   | "runtime-surface"
   | "session-inspector"
   | "terminal-surface";
@@ -18,6 +21,13 @@ export type CoreSurfaceDescriptor = {
 };
 
 export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor> = {
+  "audio-mixer": {
+    id: "audio-mixer",
+    title: "Audio Mixer",
+    subtitle: "System audio control with volume sliders, mute toggles, and default device selection.",
+    capabilities: ["audio", "volume", "mute", "default sink/source"],
+    refreshTool: "audio_status"
+  },
   "bluetooth-connect-flow": {
     id: "bluetooth-connect-flow",
     title: "Bluetooth Connect Flow",
@@ -43,6 +53,19 @@ export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor
     subtitle: "Persistent runtime diagnostics surface for bridge health, versions, and active state.",
     capabilities: ["diagnostics", "refreshable", "persistent"],
     refreshTool: "slopos_runtime_diagnostics"
+  },
+  "network-panel": {
+    id: "network-panel",
+    title: "Network Panel",
+    subtitle: "Active connections and WiFi network management.",
+    capabilities: ["network", "wifi", "connections"],
+    refreshTool: "network_status"
+  },
+  "panic-overlay": {
+    id: "panic-overlay",
+    title: "System Panic",
+    subtitle: "Full-screen overlay shown when slopOS enters panic mode.",
+    capabilities: ["panic", "recovery"]
   },
   "runtime-surface": {
     id: "runtime-surface",
@@ -75,10 +98,13 @@ export function listCoreSurfaceDescriptors() {
 
 export function isExistingModuleId(input: unknown): input is ExistingModuleId {
   return (
+    input === "audio-mixer" ||
     input === "bluetooth-connect-flow" ||
     input === "browser-inspector" ||
     input === "coding-workspace" ||
     input === "diagnostics-inspector" ||
+    input === "network-panel" ||
+    input === "panic-overlay" ||
     input === "session-inspector" ||
     input === "terminal-surface"
   );

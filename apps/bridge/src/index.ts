@@ -9,32 +9,28 @@ import { getSloposSessionEvents, subscribeSloposSessionEvents, syncSloposSession
 import { getHistoryFilePath, initializeHistory } from "./session/history";
 import { beginTurn } from "./session/loop";
 import { getTurn, resolveTurnConfirmation, subscribeTurn } from "./session/store";
+import { pollBluetoothState } from "./adapter/bluetooth";
+import { pollAudioState } from "./adapter/audio";
+import { pollNetworkState } from "./adapter/network";
+import { isPanicActive, exitPanicMode } from "./session/panic";
 
 const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/src/generated-runtime");
 
 const eventState: EventState = {
   "bluetooth.devices": {
-    scanning: true,
-    devices: [
-      {
-        id: "bt-1",
-        name: "WH-1000XM5",
-        paired: false,
-        connected: false,
-        battery: 84,
-        kind: "audio"
-      },
-      {
-        id: "bt-2",
-        name: "Studio Buds",
-        paired: true,
-        connected: false,
-        battery: 51,
-        kind: "audio"
-      }
-    ]
-  }
+    scanning: false,
+    devices: []
+  },
+  "audio.state": {
+    sinks: [],
+    sources: []
+  },
+  "network.state": {
+    connections: [],
+    wifi: []
+  },
+  "system.panic": undefined
 };
 
 function json(data: unknown, init?: ResponseInit) {
@@ -277,6 +273,12 @@ async function writeSurfaceModule(body: {
 await mkdir(generatedRuntimeRoot, { recursive: true });
 await initializeHistory();
 
+// Start adapter polling
+pollBluetoothState(eventState, 5000);
+pollAudioState(eventState, 3000);
+pollNetworkState(eventState, 5000);
+console.log("slopOS adapter polling started (bluetooth, audio, network)");
+
 Bun.serve({
   port: 8787,
   async fetch(request) {
@@ -450,9 +452,17 @@ Bun.serve({
       if (mismatch) {
         return mismatch;
       }
+      if (isPanicActive(eventState)) {
+        return json(versioned({ ok: false, error: "system is in panic mode — dismiss panic before starting new turns" }), { status: 503 });
+      }
       const task = createTask(body.intent);
-      const turn = beginTurn(task, body.context, (input) => handleToolCall(input, eventState), body.sessionKey ?? "default");
+      const turn = beginTurn(task, body.context, (input) => handleToolCall(input, eventState), body.sessionKey ?? "default", { eventState });
       return json(versioned({ turnId: turn.id, taskId: task.id }));
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/panic/dismiss") {
+      exitPanicMode(eventState);
+      return json(versioned({ ok: true }));
     }
 
     if (request.method === "POST" && url.pathname.startsWith("/api/turns/") && url.pathname.endsWith("/confirm")) {

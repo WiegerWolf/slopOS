@@ -1,10 +1,12 @@
 import { getToolDescriptor } from "@slopos/runtime";
-import { appLaunchTool, browserActiveTabTool, browserOpenTool, browserPageSnapshotTool, browserRecentEventsTool, browserSessionSnapshotTool, browserWorkspaceClaimTool, browserWorkspaceDetailTool, browserWorkspaceOpenUrlTool } from "./browser";
+import { appLaunchTool, appListTool, browserActiveTabTool, browserOpenTool, browserPageSnapshotTool, browserRecentEventsTool, browserSessionSnapshotTool, browserWorkspaceClaimTool, browserWorkspaceDetailTool, browserWorkspaceOpenUrlTool } from "./browser";
 import { fsReadTool, fsWriteTool } from "./fs";
 import { ptyCloseTool, ptyOpenTool, ptySnapshotTool, ptyWriteTool } from "./pty";
 import { shellTool } from "./shell";
 import { sloposRuntimeDiagnosticsTool, sloposSessionSnapshotTool } from "./session";
 import { systemControlTool } from "./system";
+import { audioStatusTool, audioControlTool } from "./audio";
+import { networkStatusTool, networkControlTool } from "./network";
 import type { ToolCallInput, ToolContext, ToolDefinition, ToolResult } from "./types";
 
 const definitions: ToolDefinition[] = [
@@ -20,6 +22,11 @@ const definitions: ToolDefinition[] = [
   browserWorkspaceDetailTool,
   browserWorkspaceOpenUrlTool,
   appLaunchTool,
+  appListTool,
+  audioStatusTool,
+  audioControlTool,
+  networkStatusTool,
+  networkControlTool,
   sloposRuntimeDiagnosticsTool,
   sloposSessionSnapshotTool,
   ptyOpenTool,

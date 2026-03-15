@@ -6,6 +6,36 @@ export type ToolCallInput = {
   options?: Record<string, unknown>;
 };
 
+export type AudioSink = {
+  id: string;
+  name: string;
+  volume: number;
+  muted: boolean;
+  isDefault: boolean;
+};
+
+export type AudioSource = {
+  id: string;
+  name: string;
+  volume: number;
+  muted: boolean;
+  isDefault: boolean;
+};
+
+export type NetworkConnection = {
+  name: string;
+  type: string;
+  device: string;
+  state: string;
+};
+
+export type WifiNetwork = {
+  ssid: string;
+  signal: number;
+  security: string;
+  active: boolean;
+};
+
 export type EventState = {
   "bluetooth.devices": {
     scanning: boolean;
@@ -18,6 +48,15 @@ export type EventState = {
       kind?: string;
     }>;
   };
+  "audio.state": {
+    sinks: AudioSink[];
+    sources: AudioSource[];
+  };
+  "network.state": {
+    connections: NetworkConnection[];
+    wifi: WifiNetwork[];
+  };
+  "system.panic": { active: boolean; reason?: string; timestamp?: number } | undefined;
 };
 
 export type ToolResult = {
