@@ -312,7 +312,10 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
           artifactType: "surface",
           title: spec.surface.generated.title || spec.surface.title,
           renderer: "tsx",
-          retention: sanitizeRetention(spec.surface.retention),
+          retention: sanitizeRetention(
+            // Generated surfaces are created to be shown — never collapse them
+            spec.surface.retention === "collapsed" ? "ephemeral" : spec.surface.retention
+          ),
           placement: "center",
           payload: {
             moduleId: generatedId,
@@ -341,7 +344,9 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
           artifactType: "surface",
           title: spec.surface.title,
           renderer: "tsx",
-          retention: sanitizeRetention(spec.surface.retention),
+          retention: sanitizeRetention(
+            spec.surface.retention === "collapsed" ? "ephemeral" : spec.surface.retention
+          ),
           placement: "center",
           payload: {
             moduleId: "runtime-surface",

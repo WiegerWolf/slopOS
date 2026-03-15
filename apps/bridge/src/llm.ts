@@ -56,6 +56,25 @@ function normalizeBaseUrl(input?: string) {
   return (input ?? "https://api.openai.com/v1").replace(/\/$/, "");
 }
 
+/**
+ * Attempt JSON.parse, and on failure fix common LLM issues:
+ * - Invalid backslash escapes inside strings (e.g. `\s`, `\d`, `\:`)
+ *   are replaced with the literal character (dropping the backslash).
+ */
+function safeJsonParse(input: string): unknown {
+  try {
+    return JSON.parse(input);
+  } catch {
+    // Fix invalid escape sequences: replace \X (where X is not a valid
+    // JSON escape char) with just X.  Valid JSON escapes: " \ / b f n r t u
+    const fixed = input.replace(
+      /\\(?!["\\/bfnrtu])/g,
+      ""
+    );
+    return JSON.parse(fixed);
+  }
+}
+
 function extractContent(response: ChatCompletionResponse) {
   const content = response.choices?.[0]?.message?.content;
   if (typeof content === "string") {
@@ -758,7 +777,7 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
     }
 
     console.debug("[planner] Extracted JSON string:", jsonStr);
-    const parsed = JSON.parse(jsonStr);
+    const parsed = safeJsonParse(jsonStr);
     const spec = coercePlannerSpec(parsed, task);
 
     if (!spec) {
