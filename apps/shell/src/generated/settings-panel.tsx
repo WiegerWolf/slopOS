@@ -40,9 +40,9 @@ function ProviderCard(props: {
   return (
     <div style={{
       padding: 16,
-      borderRadius: 18,
-      background: props.isActive ? "rgba(35, 70, 49, 0.08)" : "rgba(255, 251, 242, 0.55)",
-      border: props.isActive ? "2px solid rgba(35, 70, 49, 0.25)" : "1px solid rgba(36, 31, 23, 0.07)"
+      borderRadius: 12,
+      background: props.isActive ? "rgba(255, 255, 255, 0.06)" : "rgba(255, 255, 255, 0.02)",
+      border: props.isActive ? "1px solid rgba(255, 255, 255, 0.12)" : "1px solid rgba(255, 255, 255, 0.04)"
     }}>
       <Column gap={8}>
         <Row gap={8}>
@@ -80,12 +80,14 @@ function ProviderCard(props: {
                 placeholder="sk-..."
                 style={{
                   flex: 1,
-                  border: "1px solid rgba(36, 31, 23, 0.15)",
-                  borderRadius: 12,
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 8,
                   padding: "8px 12px",
                   fontSize: 13,
-                  background: "rgba(255, 255, 255, 0.72)",
-                  outline: "none"
+                  background: "rgba(255, 255, 255, 0.04)",
+                  color: "#e8e4de",
+                  outline: "none",
+                  fontFamily: "inherit"
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && keyValue.trim()) {
@@ -146,9 +148,9 @@ function CustomProviderForm(props: { onAdd: (provider: ProviderInfo) => void }) 
   return (
     <div style={{
       padding: 16,
-      borderRadius: 18,
-      background: "rgba(255, 251, 242, 0.55)",
-      border: "1px dashed rgba(36, 31, 23, 0.2)"
+      borderRadius: 12,
+      background: "rgba(255, 255, 255, 0.02)",
+      border: "1px dashed rgba(255, 255, 255, 0.1)"
     }}>
       <Column gap={8}>
         <Text tone="accent">New Custom Provider</Text>

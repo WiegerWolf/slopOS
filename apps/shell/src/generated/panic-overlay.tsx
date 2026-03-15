@@ -34,8 +34,8 @@ export default function PanicOverlay(
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      background: "rgba(0, 0, 0, 0.85)",
-      backdropFilter: "blur(4px)"
+      background: "rgba(0, 0, 0, 0.9)",
+      backdropFilter: "blur(8px)"
     }}>
       <Card title="System Panic" subtitle="slopOS has entered panic mode">
         <Column gap={14}>
