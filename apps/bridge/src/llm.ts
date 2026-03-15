@@ -15,6 +15,7 @@ import { loadConfig, resolveEndpoint } from "./config";
 
 export type PlannerContext = PlannerRuntimeContext;
 
+// OpenAI-compatible response shape
 type ChatCompletionResponse = {
   choices?: Array<{
     message?: {
@@ -30,6 +31,21 @@ type ChatCompletionResponse = {
     };
   }>;
 };
+
+// Anthropic Messages API response shape
+type AnthropicResponse = {
+  content?: Array<{
+    type: string;
+    text?: string;
+    id?: string;
+    name?: string;
+    input?: Record<string, unknown>;
+  }>;
+};
+
+function isAnthropicEndpoint(baseUrl: string): boolean {
+  return baseUrl.includes("api.anthropic.com");
+}
 
 function readEnv(name: string) {
   const value = Bun.env[name];
@@ -215,37 +231,209 @@ function plannerUserPrompt(task: Task, context?: PlannerContext) {
   });
 }
 
-function toolDefinitions() {
-  const generic = {
-    type: "object",
-    properties: {
-      args: {
-        type: "object",
-        additionalProperties: true
+const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<string, unknown> }> = {
+  shell_exec: {
+    description: "Run a shell command. Returns stdout, stderr, exitCode.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            cmd: { type: "string", description: "Full shell command string (e.g. 'curl -s wttr.in/Amsterdam')" },
+            cwd: { type: "string", description: "Working directory (optional)" },
+          },
+          required: ["cmd"],
+        },
+        options: {
+          type: "object",
+          properties: {
+            timeoutMs: { type: "number", description: "Timeout in ms (default 30000)" },
+            runAs: { type: "string", enum: ["root"], description: "Run as root via pkexec" },
+          },
+        },
       },
-      options: {
-        type: "object",
-        additionalProperties: true
-      }
+      required: ["args"],
     },
-    additionalProperties: false
-  };
+  },
+  fs_read: {
+    description: "Read a file from disk.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { path: { type: "string" } }, required: ["path"] },
+      },
+      required: ["args"],
+    },
+  },
+  fs_write: {
+    description: "Write content to a file.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: { path: { type: "string" }, content: { type: "string" } },
+          required: ["path", "content"],
+        },
+      },
+      required: ["args"],
+    },
+  },
+  browser_open: {
+    description: "Open a URL in the embedded browser.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
+      },
+      required: ["args"],
+    },
+  },
+  browser_active_tab: {
+    description: "Get the currently focused browser tab.",
+    parameters: { type: "object", properties: {} },
+  },
+  browser_page_snapshot: {
+    description: "Get a text snapshot of the current browser page.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { command: { type: "string", description: "Optional command like 'click', 'scroll', 'type'" } } },
+      },
+    },
+  },
+  audio_status: {
+    description: "Get current audio/volume state.",
+    parameters: { type: "object", properties: {} },
+  },
+  audio_control: {
+    description: "Control audio: set_volume, toggle_mute, set_default.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["set_volume", "toggle_mute", "set_default"] },
+            targetId: { type: "string" },
+            volume: { type: "number" },
+            muted: { type: "boolean" },
+          },
+          required: ["action"],
+        },
+      },
+      required: ["args"],
+    },
+  },
+  network_status: {
+    description: "Get network connection status.",
+    parameters: { type: "object", properties: {} },
+  },
+  network_control: {
+    description: "Control network: wifi_connect, wifi_disconnect, toggle_wifi.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["wifi_connect", "wifi_disconnect", "toggle_wifi"] },
+            ssid: { type: "string" },
+            password: { type: "string" },
+            device: { type: "string" },
+          },
+          required: ["action"],
+        },
+      },
+      required: ["args"],
+    },
+  },
+  pty_open: {
+    description: "Open a new pseudo-terminal session.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { command: { type: "string" }, cwd: { type: "string" } } },
+      },
+    },
+  },
+  pty_write: {
+    description: "Write text to a PTY.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { ptyId: { type: "string" }, input: { type: "string" } }, required: ["ptyId", "input"] },
+      },
+      required: ["args"],
+    },
+  },
+  pty_snapshot: {
+    description: "Get current PTY screen content.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { ptyId: { type: "string" } }, required: ["ptyId"] },
+      },
+      required: ["args"],
+    },
+  },
+  pty_close: {
+    description: "Close a PTY session.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { ptyId: { type: "string" } }, required: ["ptyId"] },
+      },
+      required: ["args"],
+    },
+  },
+  system_control: {
+    description: "System control actions: bluetooth_connect, bluetooth_disconnect, panic_dismiss.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            action: { type: "string", enum: ["bluetooth_connect", "bluetooth_disconnect", "panic_dismiss"] },
+            args: { type: "object", properties: { id: { type: "string" } } },
+          },
+          required: ["action"],
+        },
+      },
+      required: ["args"],
+    },
+  },
+};
 
+function toolDefinitions() {
   return listTools().map((tool) => {
+    const schema = TOOL_SCHEMAS[tool.id];
     const safetyText =
       tool.safety === "read_only"
-        ? "read-only; does not change machine state"
+        ? "read-only"
         : tool.safety === "stateful"
-          ? "changes live session or app state"
-          : "potentially destructive or irreversible";
+          ? "stateful"
+          : "destructive";
+
+    const description = schema
+      ? `${schema.description} [${safetyText}]`
+      : `${tool.description}; ${safetyText}`;
 
     return {
       type: "function",
       function: {
-        name: tool.name,
-        description: `${tool.description}; ${safetyText}${tool.requiresConfirmation ? "; may require confirmation depending on inputs" : ""}`,
-        parameters: generic
-      }
+        name: tool.id,
+        description,
+        parameters: schema?.parameters ?? {
+          type: "object",
+          properties: {
+            args: { type: "object", additionalProperties: true },
+            options: { type: "object", additionalProperties: true },
+          },
+        },
+      },
     };
   });
 }
@@ -331,29 +519,103 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
   const model = ep.model;
 
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${ep.apiKey}`
-      },
-      body: JSON.stringify({
-        model,
-        tools: toolDefinitions(),
-        tool_choice: "auto",
-        messages: [
-          { role: "system", content: plannerSystemPrompt() },
-          ...buildMessagesFromHistory(history),
-          { role: "user", content: plannerUserPrompt(task, context) }
-        ]
-      })
-    });
+    let payload: ChatCompletionResponse;
 
-    if (!response.ok) {
-      throw new Error(`planner request failed: ${response.status}`);
+    if (isAnthropicEndpoint(baseUrl)) {
+      // Anthropic Messages API — different format, different auth
+      const anthropicTools = listTools().map((tool) => {
+        const schema = TOOL_SCHEMAS[tool.id];
+        return {
+          name: tool.id,
+          description: schema?.description ?? tool.description,
+          input_schema: schema?.parameters ?? {
+            type: "object" as const,
+            properties: {
+              args: { type: "object" as const, additionalProperties: true },
+              options: { type: "object" as const, additionalProperties: true },
+            },
+          },
+        };
+      });
+
+      const historyMessages = buildMessagesFromHistory(history);
+      const anthropicMessages = [
+        ...historyMessages,
+        { role: "user" as const, content: plannerUserPrompt(task, context) },
+      ];
+
+      const response = await fetch(`${baseUrl}/messages`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": ep.apiKey!,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 16384,
+          system: plannerSystemPrompt(),
+          tools: anthropicTools,
+          messages: anthropicMessages,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`anthropic request failed: ${response.status} ${body}`);
+      }
+
+      const raw = (await response.json()) as AnthropicResponse;
+
+      // Convert Anthropic response → ChatCompletionResponse shape
+      const textParts = (raw.content ?? []).filter((c) => c.type === "text");
+      const toolParts = (raw.content ?? []).filter((c) => c.type === "tool_use");
+      const contentStr = textParts.map((c) => c.text ?? "").join("");
+      const toolCalls = toolParts.map((c) => ({
+        id: c.id,
+        type: "function" as const,
+        function: {
+          name: c.name!,
+          arguments: JSON.stringify(c.input ?? {}),
+        },
+      }));
+
+      payload = {
+        choices: [{
+          message: {
+            content: contentStr || undefined,
+            tool_calls: toolCalls.length ? toolCalls : undefined,
+          },
+        }],
+      };
+    } else {
+      // OpenAI-compatible endpoint
+      const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${ep.apiKey}`,
+        },
+        body: JSON.stringify({
+          model,
+          tools: toolDefinitions(),
+          tool_choice: "auto",
+          messages: [
+            { role: "system", content: plannerSystemPrompt() },
+            ...buildMessagesFromHistory(history),
+            { role: "user", content: plannerUserPrompt(task, context) },
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`planner request failed: ${response.status} ${body}`);
+      }
+
+      payload = (await response.json()) as ChatCompletionResponse;
     }
 
-    const payload = (await response.json()) as ChatCompletionResponse;
     const toolStep = toolCallsToStep(payload);
     if (toolStep) {
       return {
@@ -380,9 +642,11 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
       } satisfies AgentStep,
       source: "cloud"
     };
-  } catch {
+  } catch (err) {
+    console.error("[planner]", err instanceof Error ? err.message : err);
+
     if (mode === "cloud") {
-      throw new Error("cloud planner failed and fallback is disabled");
+      throw new Error(`cloud planner failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     return {

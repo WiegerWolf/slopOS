@@ -287,6 +287,7 @@ console.log("slopOS adapter polling started (bluetooth, audio, network)");
 
 Bun.serve({
   port: 8787,
+  idleTimeout: 120,
   async fetch(request) {
     const url = new URL(request.url);
 

@@ -34,15 +34,46 @@ function Shell() {
   } = useRuntime();
 
   const [input, setInput] = React.useState("");
+  const [history] = React.useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("slopos:prompt-history") ?? "[]"); }
+    catch { return []; }
+  });
+  const histIdx = React.useRef(-1);
+  const stash = React.useRef("");
   const { notifications, dismiss } = useNotifications();
   const active = artifacts.find((a) => a.visible);
 
   const invoke = React.useCallback(async () => {
     const text = input.trim();
     if (!text) return;
+    // Push to history (dedupe consecutive)
+    if (history[0] !== text) history.unshift(text);
+    if (history.length > 100) history.length = 100;
+    localStorage.setItem("slopos:prompt-history", JSON.stringify(history));
+    histIdx.current = -1;
+    stash.current = "";
     setInput("");
     await submitIntent(text);
-  }, [input, submitIntent]);
+  }, [input, submitIntent, history]);
+
+  const historyNav = React.useCallback((dir: "up" | "down") => {
+    if (history.length === 0) return;
+    if (dir === "up") {
+      if (histIdx.current < 0) stash.current = input;
+      const next = Math.min(histIdx.current + 1, history.length - 1);
+      histIdx.current = next;
+      setInput(history[next]);
+    } else {
+      const next = histIdx.current - 1;
+      if (next < 0) {
+        histIdx.current = -1;
+        setInput(stash.current);
+      } else {
+        histIdx.current = next;
+        setInput(history[next]);
+      }
+    }
+  }, [history, input]);
 
   // Dismiss active surface — sets visibility to false
   const dismissSurface = React.useCallback(() => {
@@ -143,7 +174,11 @@ function Shell() {
             className="prompt-input"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") void invoke(); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void invoke();
+              else if (e.key === "ArrowUp") { e.preventDefault(); historyNav("up"); }
+              else if (e.key === "ArrowDown") { e.preventDefault(); historyNav("down"); }
+            }}
             placeholder="what do you need?"
             autoFocus
           />
