@@ -16,6 +16,15 @@ type ProviderMessage = {
 };
 
 export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMessage[] {
+  // Collect tool_call IDs present in this slice of history so we can
+  // drop orphaned tool_results whose matching tool_call was sliced off.
+  const toolCallIds = new Set<string>();
+  for (const record of history) {
+    if (record.kind === "tool_call") {
+      toolCallIds.add(record.toolCallId || `${record.taskId}-${record.timestamp}-${record.tool}`);
+    }
+  }
+
   const messages: ProviderMessage[] = [];
 
   for (const record of history) {
@@ -32,7 +41,7 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
           content: `Planner status (${record.source}): ${record.statusText}`
         });
         break;
-      case "tool_call":
+      case "tool_call": {
         const toolCallId = record.toolCallId || `${record.taskId}-${record.timestamp}-${record.tool}`;
         messages.push({
           role: "assistant",
@@ -51,8 +60,11 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
           ]
         });
         break;
-      case "tool_result":
+      }
+      case "tool_result": {
         const resultToolCallId = record.toolCallId || `${record.taskId}-${record.timestamp}-${record.tool}`;
+        // Skip orphaned tool_results whose tool_call was sliced off
+        if (!toolCallIds.has(resultToolCallId)) break;
         messages.push({
           role: "tool",
           tool_call_id: resultToolCallId,
@@ -64,6 +76,7 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
           })
         });
         break;
+      }
       case "summary":
         messages.push({
           role: "assistant",
@@ -79,5 +92,17 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
     }
   }
 
-  return messages;
+  // Also drop tool_call messages whose tool_result was sliced off — the API
+  // may reject an assistant tool_calls message with no matching tool response.
+  const resultIds = new Set<string>();
+  for (const msg of messages) {
+    if (msg.role === "tool" && msg.tool_call_id) resultIds.add(msg.tool_call_id);
+  }
+
+  return messages.filter((msg) => {
+    if (msg.role === "assistant" && msg.tool_calls?.length) {
+      return msg.tool_calls.every((tc) => resultIds.has(tc.id));
+    }
+    return true;
+  });
 }

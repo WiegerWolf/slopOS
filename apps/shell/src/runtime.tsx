@@ -1310,10 +1310,13 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
     });
 
     await new Promise<void>((resolve, reject) => {
+      // Queue parts so each awaits the previous — prevents race between
+      // write_surface_module (async file write) and create_artifact (render).
+      let queue: Promise<void> = Promise.resolve();
       const close = connectTurnStream(envelope.turnId, {
         protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
         onPart(part) {
-          void handleTurnPart(part).then(() => {
+          queue = queue.then(() => handleTurnPart(part)).then(() => {
             if (part.kind === "turn_complete" || part.kind === "turn_error") {
               close();
               resolve();

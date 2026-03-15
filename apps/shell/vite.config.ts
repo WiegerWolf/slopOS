@@ -9,8 +9,9 @@ export default defineConfig({
       "/api": "http://127.0.0.1:8787"
     },
     watch: {
-      // Ignore all files in the generated runtime directory to prevent hot reloads
-      ignored: ['**/generated/**']
+      // Only ignore node_modules; generated/ must be watched so Vite's
+      // transform pipeline picks up dynamically-written surface modules.
+      ignored: ['**/node_modules/**']
     }
   },
   resolve: {
