@@ -14,7 +14,7 @@ import { pollAudioState } from "./adapter/audio";
 import { pollNetworkState } from "./adapter/network";
 import { diffEventState, onStateChange, type StateChangeEvent } from "./adapter/state-diff";
 import { isPanicActive, exitPanicMode } from "./session/panic";
-import { loadConfig, saveConfig, type SlopConfig } from "./config";
+import { loadConfig, saveConfig, listProviders, type SlopConfig } from "./config";
 
 const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/src/generated-runtime");
@@ -517,20 +517,20 @@ Bun.serve({
 
     if (request.method === "GET" && url.pathname === "/api/config") {
       const config = await loadConfig();
-      // Redact API keys for the response — send masked versions
-      const safeProviders: Record<string, unknown> = {};
-      for (const [id, provider] of Object.entries(config.providers)) {
-        safeProviders[id] = {
-          ...provider,
-          apiKey: provider.apiKey ? `${provider.apiKey.slice(0, 4)}...${provider.apiKey.slice(-4)}` : undefined,
-          hasKey: !!provider.apiKey
-        };
+      // Mask saved keys for the response
+      const maskedKeys: Record<string, string> = {};
+      for (const [id, key] of Object.entries(config.keys)) {
+        maskedKeys[id] = key.length > 8
+          ? `${key.slice(0, 4)}...${key.slice(-4)}`
+          : "****";
       }
       return json(versioned({
-        activeProvider: config.activeProvider,
-        activeModel: config.activeModel,
+        provider: config.provider,
+        model: config.model,
+        baseUrl: config.baseUrl,
         plannerMode: config.plannerMode,
-        providers: safeProviders
+        keys: maskedKeys,
+        providers: listProviders(config),
       }));
     }
 
@@ -543,43 +543,24 @@ Bun.serve({
 
       const current = await loadConfig();
 
-      // Merge updates
-      if (body.activeProvider) current.activeProvider = body.activeProvider;
-      if (body.activeModel) current.activeModel = body.activeModel;
+      if (body.provider !== undefined) current.provider = body.provider;
+      if (body.model !== undefined) current.model = body.model;
+      if (body.baseUrl !== undefined) current.baseUrl = body.baseUrl;
       if (body.plannerMode) current.plannerMode = body.plannerMode;
+      if (body.customProviders) current.customProviders = body.customProviders;
 
-      if (body.providers) {
-        for (const [id, provider] of Object.entries(body.providers)) {
-          if (!provider) continue;
-          if (current.providers[id]) {
-            // Update existing provider
-            if (provider.apiKey) current.providers[id].apiKey = provider.apiKey;
-            if (provider.baseUrl) current.providers[id].baseUrl = provider.baseUrl;
-            if (provider.name) current.providers[id].name = provider.name;
-            if (provider.models) current.providers[id].models = provider.models;
-            if (provider.headers) current.providers[id].headers = provider.headers;
+      // Merge keys (don't replace the whole map)
+      if (body.keys) {
+        for (const [id, key] of Object.entries(body.keys)) {
+          if (key) {
+            current.keys[id] = key;
           } else {
-            // New custom provider
-            current.providers[id] = provider as typeof current.providers[string];
+            delete current.keys[id];
           }
         }
       }
 
       await saveConfig(current);
-      return json(versioned({ ok: true }));
-    }
-
-    if (request.method === "DELETE" && url.pathname.startsWith("/api/config/providers/")) {
-      const providerId = url.pathname.slice("/api/config/providers/".length);
-      const current = await loadConfig();
-      if (current.providers[providerId]) {
-        delete current.providers[providerId];
-        if (current.activeProvider === providerId) {
-          current.activeProvider = "openai";
-          current.activeModel = "gpt-4.1";
-        }
-        await saveConfig(current);
-      }
       return json(versioned({ ok: true }));
     }
 

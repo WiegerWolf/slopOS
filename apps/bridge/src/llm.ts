@@ -11,7 +11,7 @@ import {
 import type { HistoryRecord } from "./session/history";
 import { buildMessagesFromHistory } from "./session/messages";
 import { listTools } from "./tool/registry";
-import { loadConfig, getActiveProviderConfig } from "./config";
+import { loadConfig, resolveEndpoint } from "./config";
 
 export type PlannerContext = PlannerRuntimeContext;
 
@@ -294,13 +294,13 @@ function toolCallsToStep(response: ChatCompletionResponse): AgentStep | null {
 
 export async function planSpecWithCloud(task: Task, context?: PlannerContext) {
   const config = await loadConfig();
-  const active = getActiveProviderConfig(config);
+  const ep = resolveEndpoint(config);
   const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
 
-  if (mode === "heuristic" || !active.apiKey) {
+  if (mode === "heuristic" || !ep.apiKey) {
     return {
       spec: heuristicPlannerSpec(task, context),
-      source: active.apiKey ? "heuristic" : "heuristic_no_key"
+      source: ep.apiKey ? "heuristic" : "heuristic_no_key"
     };
   }
 
@@ -317,25 +317,25 @@ export async function planSpecWithCloud(task: Task, context?: PlannerContext) {
 
 export async function nextAgentStepWithCloud(task: Task, context?: PlannerContext, history: HistoryRecord[] = []) {
   const config = await loadConfig();
-  const active = getActiveProviderConfig(config);
+  const ep = resolveEndpoint(config);
   const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
 
-  if (mode === "heuristic" || !active.apiKey) {
+  if (mode === "heuristic" || !ep.apiKey) {
     return {
       step: heuristicNextAgentStep(task, context),
-      source: active.apiKey ? "heuristic" : "heuristic_no_key"
+      source: ep.apiKey ? "heuristic" : "heuristic_no_key"
     };
   }
 
-  const baseUrl = normalizeBaseUrl(active.baseUrl);
-  const model = active.model;
+  const baseUrl = normalizeBaseUrl(ep.baseUrl);
+  const model = ep.model;
 
   try {
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`
+        authorization: `Bearer ${ep.apiKey}`
       },
       body: JSON.stringify({
         model,
