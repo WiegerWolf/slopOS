@@ -7,6 +7,7 @@ import DiagnosticsInspector from "./generated/diagnostics-inspector";
 import NetworkPanel from "./generated/network-panel";
 import PanicOverlay from "./generated/panic-overlay";
 import SessionInspector from "./generated/session-inspector";
+import SettingsPanel from "./generated/settings-panel";
 
 const TerminalSurface = React.lazy(() => import("./generated/terminal-surface"));
 const RuntimeSurface = React.lazy(() => import("./generated-runtime/runtime-surface"));
@@ -26,6 +27,7 @@ export const surfaceRegistry: Record<string, React.ComponentType<SurfaceComponen
   "network-panel": NetworkPanel,
   "panic-overlay": PanicOverlay,
   "session-inspector": SessionInspector,
+  "settings-panel": SettingsPanel,
   "terminal-surface": TerminalSurface,
   "runtime-surface": RuntimeSurface
 };

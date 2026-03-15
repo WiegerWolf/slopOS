@@ -14,6 +14,7 @@ import { pollAudioState } from "./adapter/audio";
 import { pollNetworkState } from "./adapter/network";
 import { diffEventState, onStateChange, type StateChangeEvent } from "./adapter/state-diff";
 import { isPanicActive, exitPanicMode } from "./session/panic";
+import { loadConfig, saveConfig, type SlopConfig } from "./config";
 
 const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/src/generated-runtime");
@@ -512,6 +513,74 @@ Bun.serve({
         return mismatch;
       }
       return json(versioned(await handleToolCall(body, eventState)));
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/config") {
+      const config = await loadConfig();
+      // Redact API keys for the response — send masked versions
+      const safeProviders: Record<string, unknown> = {};
+      for (const [id, provider] of Object.entries(config.providers)) {
+        safeProviders[id] = {
+          ...provider,
+          apiKey: provider.apiKey ? `${provider.apiKey.slice(0, 4)}...${provider.apiKey.slice(-4)}` : undefined,
+          hasKey: !!provider.apiKey
+        };
+      }
+      return json(versioned({
+        activeProvider: config.activeProvider,
+        activeModel: config.activeModel,
+        plannerMode: config.plannerMode,
+        providers: safeProviders
+      }));
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/config") {
+      const body = await readBody<Partial<SlopConfig> & { protocolVersion?: number }>(request);
+      const mismatch = validateProtocolVersion(body.protocolVersion);
+      if (mismatch) {
+        return mismatch;
+      }
+
+      const current = await loadConfig();
+
+      // Merge updates
+      if (body.activeProvider) current.activeProvider = body.activeProvider;
+      if (body.activeModel) current.activeModel = body.activeModel;
+      if (body.plannerMode) current.plannerMode = body.plannerMode;
+
+      if (body.providers) {
+        for (const [id, provider] of Object.entries(body.providers)) {
+          if (!provider) continue;
+          if (current.providers[id]) {
+            // Update existing provider
+            if (provider.apiKey) current.providers[id].apiKey = provider.apiKey;
+            if (provider.baseUrl) current.providers[id].baseUrl = provider.baseUrl;
+            if (provider.name) current.providers[id].name = provider.name;
+            if (provider.models) current.providers[id].models = provider.models;
+            if (provider.headers) current.providers[id].headers = provider.headers;
+          } else {
+            // New custom provider
+            current.providers[id] = provider as typeof current.providers[string];
+          }
+        }
+      }
+
+      await saveConfig(current);
+      return json(versioned({ ok: true }));
+    }
+
+    if (request.method === "DELETE" && url.pathname.startsWith("/api/config/providers/")) {
+      const providerId = url.pathname.slice("/api/config/providers/".length);
+      const current = await loadConfig();
+      if (current.providers[providerId]) {
+        delete current.providers[providerId];
+        if (current.activeProvider === providerId) {
+          current.activeProvider = "openai";
+          current.activeModel = "gpt-4.1";
+        }
+        await saveConfig(current);
+      }
+      return json(versioned({ ok: true }));
     }
 
     if (request.method === "POST" && url.pathname === "/api/surfaces/write") {

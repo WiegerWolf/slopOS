@@ -222,6 +222,10 @@ function buildExistingSurfaceData(moduleId: ExistingModuleId, task: Task, input?
     return {};
   }
 
+  if (moduleId === "settings-panel") {
+    return {};
+  }
+
   if (moduleId === "bluetooth-connect-flow") {
     return {
       deviceHint: typeof input?.deviceHint === "string" ? input.deviceHint : "Sony headset likely to appear first"
@@ -547,6 +551,23 @@ export function heuristicNextAgentStep(task: Task, context?: PlannerRuntimeConte
             repo: "/home/n/slopos",
             docsUrl: "https://vite.dev/guide/"
           }
+        }
+      }
+    };
+  }
+
+  if (normalized.includes("settings") || normalized.includes("configure model") || normalized.includes("change model") || normalized.includes("switch model") || normalized.includes("switch provider") || normalized.includes("set api key") || normalized.includes("configure provider")) {
+    return {
+      kind: "final",
+      spec: {
+        statusText: "Opening settings panel",
+        summaryTitle: "Opened settings",
+        summaryLine: "Surfaced the provider and model configuration panel.",
+        surface: {
+          kind: "existing",
+          moduleId: "settings-panel",
+          title: coreSurfaceDescriptors["settings-panel"].title,
+          retention: "pinned"
         }
       }
     };

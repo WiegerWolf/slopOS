@@ -8,6 +8,7 @@ export type CoreSurfaceId =
   | "panic-overlay"
   | "runtime-surface"
   | "session-inspector"
+  | "settings-panel"
   | "terminal-surface";
 
 export type ExistingModuleId = Exclude<CoreSurfaceId, "runtime-surface">;
@@ -67,6 +68,12 @@ export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor
     subtitle: "Full-screen overlay shown when slopOS enters panic mode.",
     capabilities: ["panic", "recovery"]
   },
+  "settings-panel": {
+    id: "settings-panel",
+    title: "Settings",
+    subtitle: "Model and provider configuration panel.",
+    capabilities: ["settings", "config", "provider", "model"]
+  },
   "runtime-surface": {
     id: "runtime-surface",
     title: "Runtime Surface",
@@ -106,6 +113,7 @@ export function isExistingModuleId(input: unknown): input is ExistingModuleId {
     input === "network-panel" ||
     input === "panic-overlay" ||
     input === "session-inspector" ||
+    input === "settings-panel" ||
     input === "terminal-surface"
   );
 }
