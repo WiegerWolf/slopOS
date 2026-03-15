@@ -211,6 +211,13 @@ function plannerSystemPrompt() {
             }
         }, null, 2),
         "",
+        "## Critical Formatting Rules",
+        "1. Your response MUST be ONLY a valid JSON object",
+        "2. Do NOT include any text before or after the JSON",
+        "3. Do NOT use markdown code blocks (no ```json or ```)",
+        "4. Do NOT add explanations or commentary",
+        "5. Start your response directly with '{' and end with '}'",
+        "",
         "## Strategy",
         "- For system controls (audio, network, bluetooth): use existing surfaces — they have live event subscriptions.",
         "- For information display, analysis, status dashboards: use generated — write a surface that shows the data you gathered.",
@@ -590,24 +597,33 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
         }],
       };
     } else {
-      // OpenAI-compatible endpoint
-      const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${ep.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          tools: toolDefinitions(),
-          tool_choice: "auto",
-          messages: [
-            { role: "system", content: plannerSystemPrompt() },
-            ...buildMessagesFromHistory(history),
-            { role: "user", content: plannerUserPrompt(task, context) },
-          ],
-        }),
-      });
+       // OpenAI-compatible endpoint
+       const isCerebras = baseUrl.includes("api.cerebras.ai");
+       const requestBody = {
+         model,
+         tools: toolDefinitions(),
+         tool_choice: "auto",
+         messages: [
+           { role: "system", content: plannerSystemPrompt() },
+           ...buildMessagesFromHistory(history),
+           { role: "user", content: plannerUserPrompt(task, context) },
+         ],
+       };
+       
+       // Only add response_format for non-Cerebras endpoints since Cerebras may not support it
+       if (!isCerebras) {
+         // @ts-ignore: response_format may not be typed in our definitions but is supported by many OpenAI-compatible APIs
+         requestBody.response_format = { type: "json_object" };
+       }
+       
+       const response = await fetch(`${baseUrl}/chat/completions`, {
+         method: "POST",
+         headers: {
+           "content-type": "application/json",
+           authorization: `Bearer ${ep.apiKey}`,
+         },
+         body: JSON.stringify(requestBody),
+       });
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
@@ -626,22 +642,30 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
     }
 
     const rawContent = extractContent(payload);
-    // Extract JSON from response — handle markdown code fences and extra text
-    let jsonStr = rawContent.trim();
-    
-    // Try to extract JSON from markdown code fences first
+    console.debug("[planner] Raw content from model:", rawContent);
+    let jsonStr: string | null = null;
+
+    // Try to extract JSON from markdown code fences
     const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
         jsonStr = jsonMatch[1].trim();
-    } else {
-        // If no code fences, try to find JSON object by looking for first '{' and last '}'
+    }
+
+    // If not found in code fences, try to find JSON object by looking for first '{' and last '}'
+    if (!jsonStr) {
         const firstBrace = rawContent.indexOf('{');
         const lastBrace = rawContent.lastIndexOf('}');
         if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
             jsonStr = rawContent.substring(firstBrace, lastBrace + 1);
         }
     }
-    
+
+    // If we still don't have a candidate, or it doesn't look like a JSON object, throw an error.
+    if (!jsonStr || !jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
+        throw new Error(`planner returned invalid JSON: unable to extract JSON object from response: ${rawContent}`);
+    }
+
+    console.debug("[planner] Extracted JSON string:", jsonStr);
     const parsed = JSON.parse(jsonStr);
     const spec = coercePlannerSpec(parsed, task);
 
