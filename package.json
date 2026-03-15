@@ -11,6 +11,7 @@
     "typecheck": "bun run --cwd apps/shell typecheck"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.10",
     "concurrently": "^9.1.2"
   }
 }
