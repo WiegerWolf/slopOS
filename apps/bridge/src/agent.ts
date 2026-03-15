@@ -267,6 +267,39 @@ function buildExistingSurfaceData(moduleId: ExistingModuleId, task: Task, input?
   };
 }
 
+/**
+ * Ensure generated surface code has the required imports.
+ * LLMs frequently omit one or more import lines.
+ */
+function ensureImports(code: string): string {
+  let header = "";
+
+  if (!code.includes("import React")) {
+    header += 'import React from "react";\n';
+  }
+
+  if (!code.includes("@slopos/ui")) {
+    // Scan which UI components are actually used and import them
+    const uiComponents = ["Badge", "Button", "Card", "Column", "Row", "Text", "Meter", "FactGrid", "SectionList", "Screen", "PromptBox"];
+    const used = uiComponents.filter((c) => code.includes(c));
+    if (used.length > 0) {
+      header += `import { ${used.join(", ")} } from "@slopos/ui";\n`;
+    }
+  }
+
+  if (!code.includes("@slopos/host")) {
+    const hostImports: string[] = [];
+    if (code.includes("useHost")) hostImports.push("useHost");
+    if (code.includes("useEvent")) hostImports.push("useEvent");
+    if (code.includes("SurfaceProps")) hostImports.push("type SurfaceProps");
+    if (hostImports.length > 0) {
+      header += `import { ${hostImports.join(", ")} } from "@slopos/host";\n`;
+    }
+  }
+
+  return header ? header + "\n" + code : code;
+}
+
 function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse {
   const operations: Operation[] = [
     {
@@ -296,13 +329,14 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
   } else if (spec.surface.kind === "generated" && spec.surface.generated?.code) {
     const generatedId = `gen-${task.id.replace("task-", "")}`;
     const generatedPath = `apps/shell/generated/${generatedId}.tsx`;
+    const code = ensureImports(spec.surface.generated.code);
     operations.push(
       {
         type: "write_surface_module",
         module: {
           id: generatedId,
           path: generatedPath,
-          code: spec.surface.generated.code
+          code
         }
       },
       {
