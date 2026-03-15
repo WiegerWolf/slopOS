@@ -17,7 +17,7 @@ import { isPanicActive, exitPanicMode } from "./session/panic";
 import { loadConfig, saveConfig, listProviders, type SlopConfig } from "./config";
 
 const workspaceRoot = "/home/n/slopos";
-const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/src/generated-runtime");
+const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/generated");
 
 const eventState: EventState = {
   "bluetooth.devices": {
@@ -259,7 +259,7 @@ async function writeSurfaceModule(body: {
   const targetPath = normalize(join(workspaceRoot, body.path));
 
   if (!targetPath.startsWith(generatedRuntimeRoot)) {
-    return json(versioned({ ok: false, error: "surface path must stay inside generated-runtime" }), { status: 400 });
+    return json(versioned({ ok: false, error: "surface path must stay inside apps/shell/generated" }), { status: 400 });
   }
 
   await mkdir(dirname(targetPath), { recursive: true });

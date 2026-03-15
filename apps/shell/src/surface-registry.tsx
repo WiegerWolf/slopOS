@@ -10,7 +10,7 @@ import SessionInspector from "./generated/session-inspector";
 import SettingsPanel from "./generated/settings-panel";
 
 const TerminalSurface = React.lazy(() => import("./generated/terminal-surface"));
-const RuntimeSurface = React.lazy(() => import("./generated-runtime/runtime-surface"));
+const RuntimeSurface = React.lazy(() => import("../generated/runtime-surface"));
 
 export type SurfaceComponentProps = {
   data?: Record<string, unknown>;

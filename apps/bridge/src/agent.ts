@@ -295,7 +295,7 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
     });
   } else if (spec.surface.kind === "generated" && spec.surface.generated?.code) {
     const generatedId = `gen-${task.id.replace("task-", "")}`;
-    const generatedPath = `apps/shell/src/generated-runtime/${generatedId}.tsx`;
+    const generatedPath = `apps/shell/generated/${generatedId}.tsx`;
     operations.push(
       {
         type: "write_surface_module",
@@ -330,7 +330,7 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
         type: "write_surface_module",
         module: {
           id: "runtime-surface",
-          path: "apps/shell/src/generated-runtime/runtime-surface.tsx",
+          path: "apps/shell/generated/runtime-surface.tsx",
           code: runtimeSurfaceCode(task.intent, spec.surface.runtime)
         }
       },

@@ -4,3 +4,4 @@ dist/
 .vite/
 .pilot/
 .slopos/
+apps/shell/generated/

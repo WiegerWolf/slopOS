@@ -12,7 +12,7 @@ const dynamicCache: Record<string, React.LazyExoticComponent<React.ComponentType
 function getDynamic(moduleId: string) {
   if (!dynamicCache[moduleId]) {
     dynamicCache[moduleId] = React.lazy(
-      () => import(/* @vite-ignore */ `./generated-runtime/${moduleId}.tsx`)
+      () => import(/* @vite-ignore */ `../generated/${moduleId}.tsx`)
     );
   }
   return dynamicCache[moduleId];

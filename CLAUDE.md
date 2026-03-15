@@ -64,7 +64,7 @@ TurnPart types: `turn_start`, `planner`, `operation`, `tool_call`, `tool_result`
 
 **Core surfaces** are pre-built React components referenced by `CoreSurfaceId` enum (terminal, browser-inspector, session-inspector, diagnostics-inspector, coding-workspace, etc.).
 
-**Generated surfaces** are TSX modules written by the planner to `apps/shell/src/generated-runtime/`, dynamically imported and mounted. They use `@slopos/host` hooks to interact with the bridge.
+**Generated surfaces** are TSX modules written by the planner to `apps/shell/generated/`, dynamically imported and mounted. They use `@slopos/host` hooks to interact with the bridge.
 
 ### Data model
 
