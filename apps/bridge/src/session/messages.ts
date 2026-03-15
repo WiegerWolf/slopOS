@@ -26,12 +26,15 @@ type ProviderMessage = {
 export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMessage[] {
   // Collect tool_call IDs present in this slice of history so we can
   // drop orphaned tool_results whose matching tool_call was sliced off.
+  // Also track which IDs have already been consumed to deduplicate
+  // (confirmation retries can produce two tool_results for one tool_call).
   const toolCallIds = new Set<string>();
   for (const record of history) {
     if (record.kind === "tool_call") {
       toolCallIds.add(record.toolCallId || `${record.taskId}-${record.timestamp}-${record.tool}`);
     }
   }
+  const consumedToolCallIds = new Set<string>();
 
   const messages: ProviderMessage[] = [];
 
@@ -71,8 +74,11 @@ export function buildMessagesFromHistory(history: HistoryRecord[]): ProviderMess
       }
       case "tool_result": {
         const resultToolCallId = record.toolCallId || `${record.taskId}-${record.timestamp}-${record.tool}`;
-        // Skip orphaned tool_results whose tool_call was sliced off
+        // Skip orphaned tool_results whose tool_call was sliced off,
+        // and skip duplicates (e.g. confirmation retries reuse the same ID)
         if (!toolCallIds.has(resultToolCallId)) break;
+        if (consumedToolCallIds.has(resultToolCallId)) break;
+        consumedToolCallIds.add(resultToolCallId);
         messages.push({
           role: "tool",
           tool_call_id: resultToolCallId,

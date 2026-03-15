@@ -291,11 +291,23 @@ async function runTurn(
             error: confirmedResult.error
           });
 
+          // Use a fresh ID so this doesn't duplicate the original tool_call/result pair
+          const confirmedToolCallId = crypto.randomUUID();
+          appendHistory(sessionKey, {
+            kind: "tool_call",
+            timestamp: Date.now(),
+            taskId: task.id,
+            toolCallId: confirmedToolCallId,
+            tool: tool.name,
+            args: tool.args,
+            options: { ...(tool.options ?? {}), confirm: true }
+          });
+
           appendHistory(sessionKey, {
             kind: "tool_result",
             timestamp: Date.now(),
             taskId: task.id,
-            toolCallId,
+            toolCallId: confirmedToolCallId,
             tool: tool.name,
             ok: confirmedResult.ok,
             output: confirmedResult.output,
