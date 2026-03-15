@@ -1,0 +1,16 @@
+{
+  "name": "slopos-prototype",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"bun run --cwd apps/bridge dev\" \"bun run --cwd apps/shell dev\"",
+    "build": "bun run --cwd apps/shell build",
+    "typecheck": "bun run --cwd apps/shell typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

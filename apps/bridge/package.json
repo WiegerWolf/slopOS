@@ -1,0 +1,12 @@
+{
+  "name": "@slopos/bridge",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts"
+  },
+  "dependencies": {
+    "@slopos/runtime": "workspace:*"
+  }
+}
