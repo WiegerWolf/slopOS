@@ -77,16 +77,18 @@ function coercePlannerSpec(value: unknown, task: Task): PlannerSpec | null {
   }
 
   const surfaceRecord = surface as Record<string, unknown>;
-  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "runtime" && surfaceRecord.kind !== "browser") {
+  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "runtime" && surfaceRecord.kind !== "browser" && surfaceRecord.kind !== "generated") {
     return null;
   }
+
+  const generatedObj = surfaceRecord.generated as Record<string, unknown> | undefined;
 
   return {
     statusText: maybe.statusText,
     summaryTitle: maybe.summaryTitle,
     summaryLine: maybe.summaryLine,
     surface: {
-      kind: surfaceRecord.kind,
+      kind: surfaceRecord.kind as PlannerSpec["surface"]["kind"],
       moduleId:
         typeof surfaceRecord.moduleId === "string"
           ? (surfaceRecord.moduleId as PlannerSpec["surface"]["moduleId"])
@@ -108,6 +110,13 @@ function coercePlannerSpec(value: unknown, task: Task): PlannerSpec | null {
       runtime:
         surfaceRecord.runtime && typeof surfaceRecord.runtime === "object"
           ? (surfaceRecord.runtime as PlannerSpec["surface"]["runtime"])
+          : undefined,
+      generated:
+        generatedObj && typeof generatedObj.code === "string"
+          ? {
+              code: generatedObj.code,
+              title: typeof generatedObj.title === "string" ? generatedObj.title : task.intent
+            }
           : undefined
     }
   };
@@ -117,47 +126,79 @@ function plannerSystemPrompt() {
   const surfaces = listCoreSurfaceDescriptors();
 
   return [
-    "You are the turn planner for a personal AI-operated Linux shell.",
-    "You may either call tools to gather context or return a final JSON plan.",
-    "When you need more information, emit tool calls instead of inventing state.",
-    "When you are ready to materialize the UI, return only JSON for the final plan.",
-    `Available existing surfaces: ${surfaces.map((surface) => surface.id).join(", ")}.`,
-    `Surface descriptors: ${JSON.stringify(surfaces.map((surface) => ({
-      id: surface.id,
-      title: surface.title,
-      subtitle: surface.subtitle,
-      capabilities: surface.capabilities,
-      refreshTool: surface.refreshTool ?? null
-    })))}.`,
-    "If no existing surface fits well, use kind=runtime and provide runtime title/subtitle/headline/body/primaryUrl/shellCommand/readPath, or use kind=browser for an embedded browser artifact with a URL.",
-    "Allowed retention values: ephemeral, collapsed, persistent, pinned, background.",
-    "Keep statusText concise and concrete.",
-    "Final JSON schema:",
+    "You are the turn planner for slopOS, a personal AI-operated Linux shell.",
+    "Your job: understand the user's intent, gather context with tools, then materialize a UI surface.",
+    "",
+    "## Flow",
+    "1. Call tools to gather real system state (shell commands, file reads, audio/network/bluetooth status).",
+    "2. When ready, return JSON to create the surface.",
+    "",
+    "## Surface Kinds",
+    "",
+    "### existing — pre-built surfaces (use when one fits perfectly)",
+    `Available: ${surfaces.map((s) => `${s.id} (${s.subtitle})`).join("; ")}`,
+    "",
+    "### generated — YOU WRITE THE TSX (preferred for custom tasks)",
+    "Write a complete React component as a string in surface.generated.code.",
+    "This is your superpower. Write task-specific, data-driven UI from the tool results you gathered.",
+    "",
+    "Available imports (ONLY these — no other packages exist):",
+    '  import React from "react";',
+    '  import { Badge, Button, Card, Column, Row, Text, Meter, FactGrid, SectionList } from "@slopos/ui";',
+    '  import { useHost, useEvent, type SurfaceProps } from "@slopos/host";',
+    "",
+    "Component contract:",
+    "  - Must export default function(props: SurfaceProps<YourDataType>)",
+    "  - props.data contains whatever you put in surface.data",
+    "  - useHost() returns { tool(name, args, opts), logStatus(msg), setRetention(mode), completeTask(summary) }",
+    "  - useEvent<T>(key) subscribes to live eventState (e.g. 'audio.state', 'network.state', 'bluetooth.devices')",
+    "",
+    "UI components:",
+    "  Card(title, subtitle, children) — main container",
+    "  Column(gap, children), Row(gap, children) — layout",
+    "  Text(tone?, children), Badge(tone?, children) — text display. tone: 'accent'|'muted'|'secondary'|'primary'",
+    "  Button(onClick, tone?, children) — actions. tone: 'secondary' for less emphasis",
+    "  Meter(value 0-100, label?) — progress/level bar",
+    "  FactGrid(items: {label,value}[]) — key-value pairs",
+    "  SectionList(sections: {title, lines}[]) — grouped text",
+    "",
+    "Rules for generated code:",
+    "  - Embed tool results data directly in the component (in props.data or inline)",
+    "  - Use useHost().tool() for interactive actions (buttons that run commands, etc.)",
+    "  - Keep it focused — one card, clear data, useful actions",
+    "  - TypeScript/TSX syntax, React functional component",
+    "  - NO external imports beyond the three listed above",
+    "",
+    "### browser — an embedded browser pane (for web URLs)",
+    "Set surface.url to the target URL.",
+    "",
+    "### runtime — legacy template surface (avoid, use generated instead)",
+    "",
+    "## JSON Schema",
     JSON.stringify({
-      statusText: "string",
-      summaryTitle: "string",
-      summaryLine: "string",
+      statusText: "string — shown while working",
+      summaryTitle: "string — Chronicle title",
+      summaryLine: "string — Chronicle description",
       surface: {
-        kind: "existing|runtime|browser",
-        url: "string",
-        moduleId: surfaces.map((surface) => surface.id).join("|"),
+        kind: "existing|generated|browser|runtime",
+        moduleId: "for existing: " + surfaces.map((s) => s.id).join("|"),
         title: "string",
         retention: "ephemeral|collapsed|persistent|pinned|background",
-        data: {},
-        runtime: {
-          title: "string",
-          subtitle: "string",
-          headline: "string",
-          body: "string",
-          badges: [{ label: "string", tone: "accent|muted|secondary|primary" }],
-          facts: [{ label: "string", value: "string" }],
-          sections: [{ title: "string", lines: ["string"] }],
-          primaryUrl: "string",
-          shellCommand: "string",
-          readPath: "string"
+        url: "for browser: target URL",
+        data: "object — passed to component as props.data",
+        generated: {
+          code: "string — full TSX source code",
+          title: "string — surface title"
         }
       }
-    })
+    }),
+    "",
+    "## Strategy",
+    "- For system controls (audio, network, bluetooth): use existing surfaces — they have live event subscriptions.",
+    "- For information display, analysis, status dashboards: use generated — write a surface that shows the data you gathered.",
+    "- For web pages: use browser.",
+    "- Always gather real data with tools before generating a surface. Never invent system state.",
+    "- Prefer generated surfaces over runtime. Runtime is a fixed template with limited fields."
   ].join("\n");
 }
 
@@ -167,9 +208,8 @@ function plannerUserPrompt(task: Task, context?: PlannerContext) {
     currentShellContext: context ?? null,
     machineContext: {
       workspaceRoot: "/home/n/slopos",
-      browserPrimary: "https://open.spotify.com",
-      docsPrimary: "https://vite.dev/guide/",
-      defaultReadPath: "/home/n/slopos/README.md"
+      user: "n",
+      platform: "linux"
     }
   });
 }
@@ -296,7 +336,6 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
       },
       body: JSON.stringify({
         model,
-        response_format: { type: "json_object" },
         tools: toolDefinitions(),
         tool_choice: "auto",
         messages: [
@@ -320,7 +359,11 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
       };
     }
 
-    const parsed = JSON.parse(extractContent(payload));
+    const rawContent = extractContent(payload);
+    // Extract JSON from response — handle markdown code fences
+    const jsonMatch = rawContent.match(/```(?:json)?\s*([\s\S]*?)```/);
+    const jsonStr = jsonMatch ? jsonMatch[1].trim() : rawContent.trim();
+    const parsed = JSON.parse(jsonStr);
     const spec = coercePlannerSpec(parsed, task);
 
     if (!spec) {

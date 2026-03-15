@@ -1,9 +1,10 @@
 import React, { type ChangeEvent } from "react";
 import { RuntimeProvider, SurfaceBoundary, useRuntime, type ActionLogEntry, type ConfirmationRecord } from "./runtime";
 import type { Artifact } from "@slopos/runtime";
-import { Badge, Button, Card, ChronicleItem, Column, PromptBox, Row, Screen, Text } from "@slopos/ui";
+import { Badge, Button, Card, ChronicleItem, Column, PromptBox, Row, Screen, Text, Toast } from "@slopos/ui";
 import BrowserArtifact from "./browser-artifact";
 import { surfaceRegistry } from "./surface-registry";
+import { useNotifications, type Notification } from "./notifications";
 
 function ShellCanvas() {
   const {
@@ -20,6 +21,7 @@ function ShellCanvas() {
     respondToConfirmation
   } = useRuntime();
   const [command, setCommand] = React.useState("");
+  const { notifications, dismiss } = useNotifications();
 
   const activeArtifact = artifacts.find((artifact) => artifact.visible);
 
@@ -108,8 +110,28 @@ function ShellCanvas() {
           <InspectorPanel actionLog={actionLog} />
         </div>
       </Column>
+      {notifications.length > 0 ? (
+        <div style={{ position: "fixed", bottom: 20, right: 20, display: "flex", flexDirection: "column", gap: 8, zIndex: 9000 }}>
+          {notifications.map((n) => (
+            <Toast key={n.id} tone={n.kind === "disconnected" ? "secondary" : "accent"} onDismiss={() => dismiss(n.id)}>
+              {n.summary}
+            </Toast>
+          ))}
+        </div>
+      ) : null}
     </Screen>
   );
+}
+
+const dynamicSurfaceCache: Record<string, React.LazyExoticComponent<React.ComponentType<{ data?: Record<string, unknown>; taskId: string; artifactId: string }>>> = {};
+
+function getDynamicSurface(moduleId: string) {
+  if (!dynamicSurfaceCache[moduleId]) {
+    dynamicSurfaceCache[moduleId] = React.lazy(
+      () => import(/* @vite-ignore */ `./generated-runtime/${moduleId}.tsx`)
+    );
+  }
+  return dynamicSurfaceCache[moduleId];
 }
 
 function ArtifactSurface(props: { artifact: Artifact }) {
@@ -122,7 +144,12 @@ function ArtifactSurface(props: { artifact: Artifact }) {
   }
 
   const moduleId = String(props.artifact.payload.moduleId ?? "");
-  const Component = surfaceRegistry[moduleId];
+  let Component = surfaceRegistry[moduleId];
+
+  // For generated surfaces not in the static registry, dynamically import
+  if (!Component && moduleId.startsWith("gen-")) {
+    Component = getDynamicSurface(moduleId);
+  }
 
   if (!Component) {
     return (

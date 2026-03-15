@@ -158,6 +158,19 @@ export function SectionList(props: { sections: Array<{ title: string; lines: str
   );
 }
 
+export function Toast(props: { children: React.ReactNode; tone?: Tone; onDismiss?: () => void }) {
+  return (
+    <div style={{ ...styles.toast, ...(props.tone ? toastToneStyles[props.tone] : toastToneStyles.primary) }}>
+      <span style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{props.children}</span>
+      {props.onDismiss ? (
+        <button type="button" onClick={props.onDismiss} style={styles.toastDismiss}>
+          dismiss
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 const styles: Record<string, React.CSSProperties> = {
   screen: {
     minHeight: "100vh"
@@ -300,7 +313,34 @@ const styles: Record<string, React.CSSProperties> = {
     display: "flex",
     flexDirection: "column",
     gap: 8
+  },
+  toast: {
+    display: "flex",
+    alignItems: "center",
+    gap: 12,
+    padding: "12px 16px",
+    borderRadius: 16,
+    backdropFilter: "blur(12px)",
+    boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)"
+  },
+  toastDismiss: {
+    appearance: "none" as const,
+    border: 0,
+    background: "rgba(255, 255, 255, 0.15)",
+    color: "inherit",
+    borderRadius: 999,
+    padding: "4px 10px",
+    fontSize: 11,
+    fontWeight: 600,
+    cursor: "pointer"
   }
+};
+
+const toastToneStyles: Record<Tone, React.CSSProperties> = {
+  primary: { background: "rgba(36, 31, 23, 0.92)", color: "#f7f3ea" },
+  secondary: { background: "rgba(101, 60, 45, 0.92)", color: "#f7f3ea" },
+  accent: { background: "rgba(117, 84, 23, 0.92)", color: "#f7f3ea" },
+  muted: { background: "rgba(95, 86, 71, 0.88)", color: "#f7f3ea" }
 };
 
 const textToneStyles: Record<Tone, React.CSSProperties> = {

@@ -14,6 +14,11 @@ type RuntimeSurfaceSpec = {
   readPath?: string;
 };
 
+type GeneratedSurfaceSpec = {
+  code: string;
+  title: string;
+};
+
 export type AgentToolCall = {
   name: string;
   args?: Record<string, unknown>;
@@ -25,13 +30,14 @@ export type PlannerSpec = {
   summaryTitle: string;
   summaryLine: string;
   surface: {
-    kind: "existing" | "runtime" | "browser";
+    kind: "existing" | "runtime" | "browser" | "generated";
     moduleId?: ExistingModuleId;
     title: string;
     retention: RetentionMode;
     url?: string;
     data?: Record<string, unknown>;
     runtime?: RuntimeSurfaceSpec;
+    generated?: GeneratedSurfaceSpec;
   };
 };
 
@@ -283,6 +289,37 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
         }
       }
     });
+  } else if (spec.surface.kind === "generated" && spec.surface.generated?.code) {
+    const generatedId = `gen-${task.id.replace("task-", "")}`;
+    const generatedPath = `apps/shell/src/generated-runtime/${generatedId}.tsx`;
+    operations.push(
+      {
+        type: "write_surface_module",
+        module: {
+          id: generatedId,
+          path: generatedPath,
+          code: spec.surface.generated.code
+        }
+      },
+      {
+        type: "create_artifact",
+        artifact: {
+          id: `${task.id}-generated`,
+          artifactType: "surface",
+          title: spec.surface.generated.title || spec.surface.title,
+          renderer: "tsx",
+          retention: sanitizeRetention(spec.surface.retention),
+          placement: "center",
+          payload: {
+            moduleId: generatedId,
+            data: {
+              intent: task.intent,
+              ...(spec.surface.data ?? {})
+            }
+          }
+        }
+      }
+    );
   } else if (spec.surface.kind === "runtime") {
     operations.push(
       {

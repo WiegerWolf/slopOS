@@ -12,6 +12,7 @@ import { getTurn, resolveTurnConfirmation, subscribeTurn } from "./session/store
 import { pollBluetoothState } from "./adapter/bluetooth";
 import { pollAudioState } from "./adapter/audio";
 import { pollNetworkState } from "./adapter/network";
+import { diffEventState, onStateChange, type StateChangeEvent } from "./adapter/state-diff";
 import { isPanicActive, exitPanicMode } from "./session/panic";
 
 const workspaceRoot = "/home/n/slopos";
@@ -277,6 +278,10 @@ await initializeHistory();
 pollBluetoothState(eventState, 5000);
 pollAudioState(eventState, 3000);
 pollNetworkState(eventState, 5000);
+
+// State change diffing — run every 2s, after adapters have polled
+setInterval(() => diffEventState(eventState), 2000);
+
 console.log("slopOS adapter polling started (bluetooth, audio, network)");
 
 Bun.serve({
@@ -458,6 +463,30 @@ Bun.serve({
       const task = createTask(body.intent);
       const turn = beginTurn(task, body.context, (input) => handleToolCall(input, eventState), body.sessionKey ?? "default", { eventState });
       return json(versioned({ turnId: turn.id, taskId: task.id }));
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/notifications/stream") {
+      let unsubscribe: (() => void) | undefined;
+
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode(": connected\n\n"));
+          unsubscribe = onStateChange((event: StateChangeEvent) => {
+            controller.enqueue(sse(versioned({ event }), "state-change"));
+          });
+        },
+        cancel() {
+          unsubscribe?.();
+        }
+      });
+
+      return new Response(stream, {
+        headers: {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          connection: "keep-alive"
+        }
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/api/panic/dismiss") {
