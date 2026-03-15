@@ -195,27 +195,7 @@ function createInitialTasks(): Task[] {
 }
 
 function createInitialChronicle(): ChronicleEntry[] {
-  return [
-    {
-      id: "chronicle-boot",
-      taskId: "task-boot",
-      createdAt: Date.now() - 240000,
-      updatedAt: Date.now() - 240000,
-      title: "Booted shell",
-      oneLine: "Started on a calm canvas with one prompt in the center.",
-      status: "completed",
-      visibleArtifacts: [],
-      collapsedArtifacts: [],
-      discardedArtifacts: [],
-      resumable: false,
-      restoreMode: "snapshot",
-      tags: ["boot"],
-      uiState: {
-        expanded: false,
-        height: "line"
-      }
-    }
-  ];
+  return [];
 }
 
 function restoreTask(task: Task): Task {
@@ -1082,7 +1062,15 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
 
     if (operation.type === "create_artifact") {
       const nextArtifact = makeArtifact(taskId, operation.artifact);
-      setArtifacts((current) => [nextArtifact, ...current.map((artifact) => ({ ...artifact, focused: false }))]);
+      setArtifacts((current) => [
+        nextArtifact,
+        ...current.map((artifact) => ({
+          ...artifact,
+          focused: false,
+          // Hide other surfaces when a foreground artifact arrives
+          visible: nextArtifact.visible ? (artifact.retention === "background") : artifact.visible
+        }))
+      ]);
       setTasks((current) => current.map((task) => (task.id === taskId ? { ...task, artifacts: [...task.artifacts, nextArtifact.id] } : task)));
       return;
     }
@@ -1198,6 +1186,9 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       });
       if (!part.ok && part.error) {
         setStatusText(part.error);
+      } else {
+        setStatusText("thinking...");
+        setAgentTurn((current) => current ? { ...current, statusText: "thinking..." } : current);
       }
       return;
     }

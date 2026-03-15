@@ -185,7 +185,10 @@ function Shell() {
         </div>
 
         <div className="status-line">
-          <span>{statusText || "\u00A0"}</span>
+          <span>
+            {agentTurn ? <span className="working-dot" /> : null}
+            {statusText || "\u00A0"}
+          </span>
           <span>
             <kbd>`</kbd> focus
             {" "}

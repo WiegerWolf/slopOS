@@ -15,6 +15,7 @@ const PRESETS: Provider[] = [
   { id: "xai",        name: "xAI",         baseUrl: "https://api.x.ai/v1" },
   { id: "deepseek",   name: "DeepSeek",    baseUrl: "https://api.deepseek.com/v1" },
   { id: "mistral",    name: "Mistral",     baseUrl: "https://api.mistral.ai/v1" },
+  { id: "cerebras",   name: "Cerebras",    baseUrl: "https://api.cerebras.ai/v1" },
   { id: "ollama",     name: "Ollama",      baseUrl: "http://localhost:11434/v1" },
 ];
 
