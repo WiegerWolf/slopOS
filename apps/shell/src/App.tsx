@@ -7,16 +7,47 @@ import { useNotifications } from "./notifications";
 
 // ---- Dynamic surface loader ----
 
-const dynamicCache: Record<string, React.LazyExoticComponent<React.ComponentType<{ data?: Record<string, unknown>; taskId: string; artifactId: string }>>> = {};
+type SurfaceComponentProps = { data?: Record<string, unknown>; taskId: string; artifactId: string };
+
+const dynamicCache: Record<string, React.LazyExoticComponent<React.ComponentType<SurfaceComponentProps>>> = {};
 
 function getDynamic(moduleId: string) {
   if (!dynamicCache[moduleId]) {
     const ts = Date.now();
-    const importFn = (): Promise<{ default: React.ComponentType<{ data?: Record<string, unknown>; taskId: string; artifactId: string }> }> =>
-      import(/* @vite-ignore */ `../generated/${moduleId}.tsx?t=${ts}`);
+    const importFn = (): Promise<{ default: React.ComponentType<SurfaceComponentProps> }> =>
+      import(/* @vite-ignore */ `../generated/${moduleId}.tsx?t=${ts}`).catch((err) => {
+        // Return a fallback component that shows the compile/import error
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          default: ((_props: SurfaceComponentProps) =>
+            React.createElement("div", { style: { color: "#c44", padding: 16, fontSize: 13, whiteSpace: "pre-wrap" } },
+              `Surface failed to load: ${message}`
+            )) as React.ComponentType<SurfaceComponentProps>
+        };
+      });
     dynamicCache[moduleId] = React.lazy(importFn);
   }
   return dynamicCache[moduleId];
+}
+
+// ---- Error boundary for surfaces ----
+
+class SurfaceErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { error: string | null }
+> {
+  state: { error: string | null } = { error: null };
+  static getDerivedStateFromError(err: unknown) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+  render() {
+    if (this.state.error) {
+      return React.createElement("div", { style: { color: "#c44", padding: 16, fontSize: 13, whiteSpace: "pre-wrap" } },
+        `Surface render error: ${this.state.error}`
+      );
+    }
+    return this.props.children;
+  }
 }
 
 // ---- Shell ----
@@ -249,13 +280,15 @@ function Surface(props: { artifact: Artifact }) {
 
   return (
     <SurfaceBoundary artifact={props.artifact}>
-      <React.Suspense fallback={<div className="working">loading...</div>}>
-        <Component
-          artifactId={props.artifact.id}
-          taskId={props.artifact.taskId}
-          data={(props.artifact.payload.data ?? {}) as Record<string, unknown>}
-        />
-      </React.Suspense>
+      <SurfaceErrorBoundary>
+        <React.Suspense fallback={<div className="working">loading...</div>}>
+          <Component
+            artifactId={props.artifact.id}
+            taskId={props.artifact.taskId}
+            data={(props.artifact.payload.data ?? {}) as Record<string, unknown>}
+          />
+        </React.Suspense>
+      </SurfaceErrorBoundary>
     </SurfaceBoundary>
   );
 }
