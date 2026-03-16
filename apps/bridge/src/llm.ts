@@ -111,7 +111,7 @@ function coercePlannerSpec(value: unknown, task: Task): PlannerSpec | null {
   }
 
   const surfaceRecord = surface as Record<string, unknown>;
-  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "runtime" && surfaceRecord.kind !== "generated") {
+  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "generated") {
     return null;
   }
 
@@ -140,10 +140,6 @@ function coercePlannerSpec(value: unknown, task: Task): PlannerSpec | null {
       data:
         surfaceRecord.data && typeof surfaceRecord.data === "object"
           ? (surfaceRecord.data as Record<string, unknown>)
-          : undefined,
-      runtime:
-        surfaceRecord.runtime && typeof surfaceRecord.runtime === "object"
-          ? (surfaceRecord.runtime as PlannerSpec["surface"]["runtime"])
           : undefined,
       generated:
         generatedObj && typeof generatedObj.code === "string"
@@ -204,8 +200,6 @@ function plannerSystemPrompt() {
         "  - TypeScript/TSX syntax, React functional component",
         "  - NO external imports beyond the three listed above",
         "",
-        "### runtime — legacy template surface (avoid, use generated instead)",
-        "",
         "## JSON Schema",
         "You MUST return a valid JSON object matching this exact structure. Return ONLY the JSON, no additional text:",
         JSON.stringify({
@@ -213,11 +207,10 @@ function plannerSystemPrompt() {
             summaryTitle: "string — Chronicle title",
             summaryLine: "string — Chronicle description",
             surface: {
-                kind: "existing|generated|runtime",
+                kind: "existing|generated",
                 moduleId: "for existing: " + surfaces.map((s) => s.id).join("|"),
                 title: "string",
                 retention: "ephemeral|collapsed|persistent|pinned|background",
-                url: "optional URL for context",
                 data: "object — passed to component as props.data",
                 generated: {
                     code: "string — full TSX source code",
@@ -238,7 +231,7 @@ function plannerSystemPrompt() {
         "- For information display, analysis, status dashboards: use generated — write a surface that shows the data you gathered.",
         "- For web pages: use generated with a browser_open tool call.",
         "- Always gather real data with tools before generating a surface. Never invent system state.",
-        "- Prefer generated surfaces over runtime. Runtime is a fixed template with limited fields."
+        "- Prefer generated surfaces for custom tasks. Use existing only when a pre-built surface fits perfectly."
     ].join("\n");
 }
 

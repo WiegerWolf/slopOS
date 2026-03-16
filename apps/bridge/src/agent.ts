@@ -1,19 +1,6 @@
 import type { AgentTurnResponse, Operation, RetentionMode, Task } from "@slopos/runtime";
 import { coreSurfaceDescriptors, isExistingModuleId, type ExistingModuleId } from "@slopos/runtime";
 
-type RuntimeSurfaceSpec = {
-  title?: string;
-  subtitle?: string;
-  headline?: string;
-  body?: string;
-  badges?: Array<{ label: string; tone?: "accent" | "muted" | "secondary" | "primary" }>;
-  facts?: Array<{ label: string; value: string }>;
-  sections?: Array<{ title: string; lines: string[] }>;
-  primaryUrl?: string;
-  shellCommand?: string;
-  readPath?: string;
-};
-
 type GeneratedSurfaceSpec = {
   code: string;
   title: string;
@@ -30,13 +17,11 @@ export type PlannerSpec = {
   summaryTitle: string;
   summaryLine: string;
   surface: {
-    kind: "existing" | "runtime" | "generated";
+    kind: "existing" | "generated";
     moduleId?: ExistingModuleId;
     title: string;
     retention: RetentionMode;
-    url?: string;
     data?: Record<string, unknown>;
-    runtime?: RuntimeSurfaceSpec;
     generated?: GeneratedSurfaceSpec;
   };
 };
@@ -93,114 +78,6 @@ export type AgentStep =
       kind: "final";
       spec: PlannerSpec;
     };
-
-function escapeForTemplate(value: string) {
-  return JSON.stringify(value);
-}
-
-export function runtimeSurfaceCode(intent: string, runtime: RuntimeSurfaceSpec = {}) {
-  const safeIntent = escapeForTemplate(intent);
-  const safeRuntime = JSON.stringify(runtime);
-  const safePrimaryUrl = escapeForTemplate(runtime.primaryUrl ?? "https://open.spotify.com");
-  const safeShellCommand = escapeForTemplate(runtime.shellCommand ?? "pwd");
-  const safeReadPath = escapeForTemplate(runtime.readPath ?? "/home/n/slopos/README.md");
-  const safeWorkspace = escapeForTemplate("/home/n/slopos");
-
-  return `import React from "react";
-import { Badge, Button, Card, Column, FactGrid, Row, SectionList, Text } from "@slopos/ui";
-import { useHost, type SurfaceProps } from "@slopos/host";
-
-export const surface = {
-  id: "runtime-surface",
-  title: "Runtime Surface",
-  version: "0.1.0",
-  preferredPlacement: "center",
-  defaultRetention: "pinned"
-} as const;
-
-const defaultRuntime = ${safeRuntime};
-
-export default function RuntimeSurface(props: SurfaceProps<{ intent?: string; primaryUrl?: string; runtime?: Record<string, unknown>; restoredFromPersistence?: boolean; restoreStrategy?: string }>) {
-  const host = useHost();
-  const effectiveIntent = props.data?.intent ?? ${safeIntent};
-  const runtime = {
-    ...defaultRuntime,
-    ...(props.data?.runtime ?? {})
-  } as {
-    title?: string;
-    subtitle?: string;
-    headline?: string;
-    body?: string;
-    badges?: Array<{ label: string; tone?: "accent" | "muted" | "secondary" | "primary" }>;
-    facts?: Array<{ label: string; value: string }>;
-    sections?: Array<{ title: string; lines: string[] }>;
-  };
-
-  return (
-    <Card title={runtime.title ?? "Runtime Workspace"} subtitle={runtime.subtitle ?? "This TSX file was written by the local bridge at request time."}>
-      <Column gap={14}>
-        {props.data?.restoredFromPersistence ? (
-          <Row gap={10}>
-            <Badge tone="muted">restored</Badge>
-            {props.data?.restoreStrategy ? <Text tone="muted">strategy: {props.data.restoreStrategy}</Text> : null}
-          </Row>
-        ) : null}
-        <Text>{runtime.headline ?? "Current intent"}: {effectiveIntent}</Text>
-        {runtime.body ? <Text tone="muted">{runtime.body}</Text> : null}
-        <Row gap={10}>
-          <Badge tone="accent">agent-written TSX</Badge>
-          <Badge tone="muted">direct host tools</Badge>
-          {(runtime.badges ?? []).map((badge) => (
-            <Badge key={badge.label} tone={badge.tone ?? "muted"}>{badge.label}</Badge>
-          ))}
-        </Row>
-        <FactGrid items={runtime.facts ?? []} />
-        <SectionList sections={runtime.sections ?? []} />
-        <Row gap={10}>
-          <Button
-            onClick={() =>
-              host.tool(
-                "browser_open",
-                { url: props.data?.primaryUrl ?? ${safePrimaryUrl} },
-                { runAs: "user" }
-              )
-            }
-          >
-            Open Web Surface
-          </Button>
-          <Button
-            tone="secondary"
-            onClick={async () => {
-              const result = await host.tool<{ stdout?: string }>(
-                "shell_exec",
-                { cmd: ${safeShellCommand}, cwd: ${safeWorkspace} },
-                { runAs: "user", timeoutMs: 5000 }
-              );
-              host.logStatus(result.stdout?.trim() || "shell command finished");
-            }}
-          >
-            Run Shell Action
-          </Button>
-          <Button
-            tone="secondary"
-            onClick={async () => {
-              const result = await host.tool<{ content?: string }>(
-                "fs_read",
-                { path: ${safeReadPath} },
-                { runAs: "user" }
-              );
-              host.logStatus(result.content ? "Read file from disk" : "File was empty");
-            }}
-          >
-            Read File
-          </Button>
-        </Row>
-      </Column>
-    </Card>
-  );
-}
-`;
-}
 
 function sanitizeRetention(input: unknown, fallback: RetentionMode = "pinned"): RetentionMode {
   return input === "ephemeral" || input === "collapsed" || input === "persistent" || input === "pinned" || input === "background"
@@ -276,7 +153,7 @@ function ensureImports(code: string): string {
 
   if (!code.includes("@slopos/ui")) {
     // Scan which UI components are actually used and import them
-    const uiComponents = ["Badge", "Button", "Card", "Column", "Row", "Text", "Meter", "FactGrid", "SectionList", "Screen", "PromptBox"];
+    const uiComponents = ["Badge", "Button", "Card", "Column", "Row", "Text", "Meter", "FactGrid", "SectionList", "Screen", "PromptBox", "Toast"];
     const used = uiComponents.filter((c) => code.includes(c));
     if (used.length > 0) {
       header += `import { ${used.join(", ")} } from "@slopos/ui";\n`;
@@ -352,38 +229,6 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
             data: {
               intent: task.intent,
               ...(spec.surface.data ?? {})
-            }
-          }
-        }
-      }
-    );
-  } else if (spec.surface.kind === "runtime") {
-    operations.push(
-      {
-        type: "write_surface_module",
-        module: {
-          id: "runtime-surface",
-          path: "apps/shell/generated/runtime-surface.tsx",
-          code: runtimeSurfaceCode(task.intent, spec.surface.runtime)
-        }
-      },
-      {
-        type: "create_artifact",
-        artifact: {
-          id: `${task.id}-runtime-surface`,
-          artifactType: "surface",
-          title: spec.surface.title,
-          renderer: "tsx",
-          retention: sanitizeRetention(
-            spec.surface.retention === "collapsed" ? "ephemeral" : spec.surface.retention
-          ),
-          placement: "center",
-          payload: {
-            moduleId: "runtime-surface",
-            data: {
-              intent: task.intent,
-              primaryUrl: spec.surface.runtime?.primaryUrl ?? "https://open.spotify.com",
-              runtime: spec.surface.runtime ?? {}
             }
           }
         }
