@@ -629,7 +629,11 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
     failTask(taskId, error.message, error.oneLine);
   }, [failTask]);
 
+  // Serialize tool calls from surfaces to avoid state update storms
+  const toolQueueRef = React.useRef<Promise<unknown>>(Promise.resolve());
+
   const callTool = React.useCallback(async <TResult,>(name: string, args?: Record<string, unknown>, options?: ToolCallOptions): Promise<TResult> => {
+    const execute = async (): Promise<TResult> => {
     if (!options?.quiet) {
       pushLog({
         kind: "tool",
@@ -708,6 +712,12 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       });
     }
     return result.output as TResult;
+    };
+
+    // Chain onto the queue so concurrent calls run sequentially
+    const queued = toolQueueRef.current.then(execute, execute);
+    toolQueueRef.current = queued.catch(() => undefined);
+    return queued;
   }, [handleRuntimeError, pushLog]);
 
   const applyOperation = React.useCallback(async (taskId: string, operation: Operation) => {

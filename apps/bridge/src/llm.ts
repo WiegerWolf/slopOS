@@ -240,6 +240,7 @@ function plannerSystemPrompt() {
         "Rules for generated code:",
         "  - Embed tool results data directly in the component (in props.data or inline)",
         "  - Use useHost().tool() for interactive actions (buttons that run commands, etc.)",
+        "  - NEVER use Promise.all() with tool() calls — run them sequentially with for-of or await each one",
         "  - Keep it focused — one card, clear data, useful actions",
         "  - TypeScript/TSX syntax, React functional component",
         "  - NO external imports beyond the three listed above",
