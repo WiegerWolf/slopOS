@@ -517,9 +517,7 @@ function toolCallsToStep(response: ChatCompletionResponse): AgentStep | null {
 export async function planSpecWithCloud(task: Task, context?: PlannerContext) {
   const config = await loadConfig();
   const ep = resolveEndpoint(config);
-  const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
-
-  if (mode === "heuristic" || !ep.apiKey) {
+  if (!ep.apiKey) {
     throw new Error("no API key configured — open settings to add one");
   }
 
@@ -537,9 +535,7 @@ export async function planSpecWithCloud(task: Task, context?: PlannerContext) {
 export async function nextAgentStepWithCloud(task: Task, context?: PlannerContext, history: HistoryRecord[] = []) {
   const config = await loadConfig();
   const ep = resolveEndpoint(config);
-  const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
-
-  if (mode === "heuristic" || !ep.apiKey) {
+  if (!ep.apiKey) {
     throw new Error("no API key configured — open settings to add one");
   }
 

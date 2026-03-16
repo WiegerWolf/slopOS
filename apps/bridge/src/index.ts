@@ -299,7 +299,6 @@ Bun.serve({
         provider: config.provider,
         model: config.model,
         baseUrl: config.baseUrl,
-        plannerMode: config.plannerMode,
         keys: maskedKeys,
         providers: listProviders(config),
       });
@@ -313,7 +312,6 @@ Bun.serve({
       if (body.provider !== undefined) current.provider = body.provider;
       if (body.model !== undefined) current.model = body.model;
       if (body.baseUrl !== undefined) current.baseUrl = body.baseUrl;
-      if (body.plannerMode) current.plannerMode = body.plannerMode;
       if (body.customProviders) current.customProviders = body.customProviders;
 
       if (body.keys) {

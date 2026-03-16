@@ -8,7 +8,6 @@ type Config = {
   provider: string;
   model: string;
   baseUrl: string;
-  plannerMode: string;
   keys: Record<string, string>;
   providers: Provider[];
 };
@@ -23,12 +22,12 @@ export const surface = {
 
 const input: React.CSSProperties = {
   flex: 1,
-  border: "1px solid rgba(255, 255, 255, 0.08)",
+  border: "1px solid var(--border)",
   borderRadius: 8,
   padding: "8px 12px",
   fontSize: 13,
-  background: "rgba(255, 255, 255, 0.04)",
-  color: "#e8e4de",
+  background: "var(--surface)",
+  color: "var(--text)",
   outline: "none",
   fontFamily: "inherit",
 };
@@ -143,18 +142,6 @@ export default function SettingsPanel(_props: SurfaceProps<Record<string, unknow
                 setDraft((d) => ({ ...d, key: "" }));
               }}>save</Button>
             ) : null}
-          </Row>
-        </Column>
-
-        {/* ---- planner mode ---- */}
-        <Column gap={4}>
-          <Text tone="accent">Planner</Text>
-          <Row gap={4}>
-            {(["auto", "cloud", "heuristic"] as const).map((m) => (
-              <Button key={m} tone={cfg.plannerMode === m ? "primary" : "secondary"} onClick={() => void patch({ plannerMode: m })}>
-                {m}
-              </Button>
-            ))}
           </Row>
         </Column>
 
