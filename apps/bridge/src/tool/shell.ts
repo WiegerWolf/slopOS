@@ -29,7 +29,8 @@ export const shellTool: ToolDefinition = {
     const cwd = typeof input.args?.cwd === "string" ? input.args.cwd : undefined;
     const timeoutMs = typeof input.options?.timeoutMs === "number" ? input.options.timeoutMs : 30000;
     const asRoot = input.options?.runAs === "root";
-    const result = await execCommand(command, { asRoot, cwd, timeoutMs });
+    const background = input.options?.background === true;
+    const result = await execCommand(command, { asRoot, cwd, timeoutMs, background });
 
     return {
       ok: result.ok,

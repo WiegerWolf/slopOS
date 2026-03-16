@@ -262,6 +262,7 @@ function plannerSystemPrompt() {
         "- For any task: gather data with shell_exec (pactl, nmcli, bluetoothctl, etc.), then generate a surface showing results.",
         "- For web pages: use generated with a browser_open tool call.",
         "- Always gather real data with tools before generating a surface. Never invent system state.",
+        "- For long-running processes (audio/video players, servers, daemons): use shell_exec with options.background=true. This returns a pid you can embed in surface.data so the UI can kill it later via shell_exec('kill <pid>').",
         "- Use watch tool to monitor background conditions and react when they change.",
         "- Prefer generated surfaces. Use existing only when a pre-built surface fits perfectly."
     ].join("\n");
@@ -281,7 +282,7 @@ function plannerUserPrompt(task: Task, context?: PlannerContext) {
 
 const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<string, unknown> }> = {
   shell_exec: {
-    description: "Run a shell command. Returns stdout, stderr, exitCode.",
+    description: "Run a shell command. Returns stdout, stderr, exitCode. Use options.background=true for long-running processes (audio players, servers, etc.) — returns immediately with pid.",
     parameters: {
       type: "object",
       properties: {
@@ -298,6 +299,7 @@ const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<str
           properties: {
             timeoutMs: { type: "number", description: "Timeout in ms (default 30000)" },
             runAs: { type: "string", enum: ["root"], description: "Run as root via pkexec" },
+            background: { type: "boolean", description: "Start process in background, return immediately with pid. Use for audio players, servers, long-running tasks." },
           },
         },
       },
