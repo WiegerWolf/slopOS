@@ -181,7 +181,7 @@ function plannerSystemPrompt() {
         "  - Must export default function(props: SurfaceProps<YourDataType>)",
         "  - props.data contains whatever you put in surface.data",
         "  - useHost() returns { tool(name, args, opts), logStatus(msg), setRetention(mode), completeTask(summary) }",
-        "  - useEvent<T>(key) subscribes to live eventState (e.g. 'audio.state', 'network.state', 'bluetooth.devices')",
+        "  - useEvent<T>(key) subscribes to live eventState (e.g. 'system.panic')",
         "",
         "UI components:",
         "  Card(title, subtitle, children) — main container",
@@ -227,11 +227,11 @@ function plannerSystemPrompt() {
         "5. Start your response directly with '{' and end with '}'",
         "",
         "## Strategy",
-        "- For system controls (audio, network, bluetooth): use existing surfaces — they have live event subscriptions.",
-        "- For information display, analysis, status dashboards: use generated — write a surface that shows the data you gathered.",
+        "- For any task: gather data with shell_exec (pactl, nmcli, bluetoothctl, etc.), then generate a surface showing results.",
         "- For web pages: use generated with a browser_open tool call.",
         "- Always gather real data with tools before generating a surface. Never invent system state.",
-        "- Prefer generated surfaces for custom tasks. Use existing only when a pre-built surface fits perfectly."
+        "- Use watch tool to monitor background conditions and react when they change.",
+        "- Prefer generated surfaces. Use existing only when a pre-built surface fits perfectly."
     ].join("\n");
 }
 
