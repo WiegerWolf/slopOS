@@ -44,18 +44,44 @@ export function listTools() {
   });
 }
 
+/**
+ * Unwrap double-nested args from surface calls.
+ * Surfaces call: tool("shell_exec", { args: { cmd: "..." }, options: { ... } })
+ * which arrives as input.args = { args: { cmd: "..." }, options: { ... } }
+ * The LLM agent loop already unwraps, but direct host calls don't.
+ */
+function normalizeInput(input: ToolCallInput): ToolCallInput {
+  const args = input.args;
+  if (!args) return input;
+
+  // Detect the double-wrap pattern: args has an "args" sub-object
+  if (args.args && typeof args.args === "object") {
+    return {
+      name: input.name,
+      args: args.args as Record<string, unknown>,
+      options: {
+        ...(input.options ?? {}),
+        ...((args.options && typeof args.options === "object") ? args.options as Record<string, unknown> : {})
+      }
+    };
+  }
+
+  return input;
+}
+
 export async function executeTool(input: ToolCallInput, context: ToolContext): Promise<ToolResult> {
-  const tool = registry.get(input.name as Parameters<typeof registry.get>[0]);
+  const normalized = normalizeInput(input);
+  const tool = registry.get(normalized.name as Parameters<typeof registry.get>[0]);
   if (!tool) {
     return {
       ok: false,
-      error: `unknown tool ${input.name}`,
+      error: `unknown tool ${normalized.name}`,
       events: context.eventState
     };
   }
 
-  const confirmation = tool.requiresConfirmation?.(input);
-  if (confirmation && input.options?.confirm !== true) {
+  const confirmation = tool.requiresConfirmation?.(normalized);
+  if (confirmation && normalized.options?.confirm !== true) {
     return {
       ok: false,
       error: "confirmation required",
@@ -65,7 +91,7 @@ export async function executeTool(input: ToolCallInput, context: ToolContext): P
   }
 
   try {
-    return await tool.execute(input, context);
+    return await tool.execute(normalized, context);
   } catch (error) {
     return {
       ok: false,
