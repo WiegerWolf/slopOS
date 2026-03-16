@@ -16,18 +16,6 @@ const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/generated");
 
 const eventState: EventState = {
-  "bluetooth.devices": {
-    scanning: false,
-    devices: []
-  },
-  "audio.state": {
-    sinks: [],
-    sources: []
-  },
-  "network.state": {
-    connections: [],
-    wifi: []
-  },
   "system.panic": undefined
 };
 

@@ -1,4 +1,4 @@
-import type { ToolId, ToolSafety } from "@slopos/runtime";
+import type { ToolId } from "@slopos/runtime";
 
 export type ToolCallInput = {
   name: ToolId | string;
@@ -6,56 +6,7 @@ export type ToolCallInput = {
   options?: Record<string, unknown>;
 };
 
-export type AudioSink = {
-  id: string;
-  name: string;
-  volume: number;
-  muted: boolean;
-  isDefault: boolean;
-};
-
-export type AudioSource = {
-  id: string;
-  name: string;
-  volume: number;
-  muted: boolean;
-  isDefault: boolean;
-};
-
-export type NetworkConnection = {
-  name: string;
-  type: string;
-  device: string;
-  state: string;
-};
-
-export type WifiNetwork = {
-  ssid: string;
-  signal: number;
-  security: string;
-  active: boolean;
-};
-
 export type EventState = {
-  "bluetooth.devices": {
-    scanning: boolean;
-    devices: Array<{
-      id: string;
-      name: string;
-      paired: boolean;
-      connected: boolean;
-      battery?: number;
-      kind?: string;
-    }>;
-  };
-  "audio.state": {
-    sinks: AudioSink[];
-    sources: AudioSource[];
-  };
-  "network.state": {
-    connections: NetworkConnection[];
-    wifi: WifiNetwork[];
-  };
   "system.panic": { active: boolean; reason?: string; timestamp?: number } | undefined;
 };
 

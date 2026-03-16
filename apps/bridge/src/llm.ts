@@ -306,52 +306,6 @@ const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<str
       required: ["args"],
     },
   },
-audio_status: {
-    description: "Get current audio/volume state.",
-    parameters: { type: "object", properties: {} },
-  },
-  audio_control: {
-    description: "Control audio: set_volume, toggle_mute, set_default.",
-    parameters: {
-      type: "object",
-      properties: {
-        args: {
-          type: "object",
-          properties: {
-            action: { type: "string", enum: ["set_volume", "toggle_mute", "set_default"] },
-            targetId: { type: "string" },
-            volume: { type: "number" },
-            muted: { type: "boolean" },
-          },
-          required: ["action"],
-        },
-      },
-      required: ["args"],
-    },
-  },
-  network_status: {
-    description: "Get network connection status.",
-    parameters: { type: "object", properties: {} },
-  },
-  network_control: {
-    description: "Control network: wifi_connect, wifi_disconnect, toggle_wifi.",
-    parameters: {
-      type: "object",
-      properties: {
-        args: {
-          type: "object",
-          properties: {
-            action: { type: "string", enum: ["wifi_connect", "wifi_disconnect", "toggle_wifi"] },
-            ssid: { type: "string" },
-            password: { type: "string" },
-            device: { type: "string" },
-          },
-          required: ["action"],
-        },
-      },
-      required: ["args"],
-    },
-  },
   pty_open: {
     description: "Open a new pseudo-terminal session.",
     parameters: {
@@ -387,23 +341,6 @@ audio_status: {
       type: "object",
       properties: {
         args: { type: "object", properties: { ptyId: { type: "string" } }, required: ["ptyId"] },
-      },
-      required: ["args"],
-    },
-  },
-  system_control: {
-    description: "System control actions: bluetooth_connect, bluetooth_disconnect, panic_dismiss.",
-    parameters: {
-      type: "object",
-      properties: {
-        args: {
-          type: "object",
-          properties: {
-            action: { type: "string", enum: ["bluetooth_connect", "bluetooth_disconnect", "panic_dismiss"] },
-            args: { type: "object", properties: { id: { type: "string" } } },
-          },
-          required: ["action"],
-        },
       },
       required: ["args"],
     },

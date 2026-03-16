@@ -4,9 +4,6 @@ import { fsReadTool, fsWriteTool } from "./fs";
 import { ptyCloseTool, ptyOpenTool, ptySnapshotTool, ptyWriteTool } from "./pty";
 import { shellTool } from "./shell";
 import { sloposRuntimeDiagnosticsTool, sloposSessionSnapshotTool } from "./session";
-import { systemControlTool } from "./system";
-import { audioStatusTool, audioControlTool } from "./audio";
-import { networkStatusTool, networkControlTool } from "./network";
 import { watchTool, watchListTool, watchCancelTool } from "./watch";
 import type { ToolCallInput, ToolContext, ToolDefinition, ToolResult } from "./types";
 
@@ -17,17 +14,12 @@ const definitions: ToolDefinition[] = [
   browserOpenTool,
   appLaunchTool,
   appListTool,
-  audioStatusTool,
-  audioControlTool,
-  networkStatusTool,
-  networkControlTool,
   sloposRuntimeDiagnosticsTool,
   sloposSessionSnapshotTool,
   ptyOpenTool,
   ptyWriteTool,
   ptySnapshotTool,
   ptyCloseTool,
-  systemControlTool,
   watchTool,
   watchListTool,
   watchCancelTool

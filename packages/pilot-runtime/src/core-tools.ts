@@ -3,13 +3,9 @@ export type ToolSafety = "read_only" | "stateful" | "destructive";
 export type ToolId =
   | "app_launch"
   | "app_list"
-  | "audio_control"
-  | "audio_status"
   | "browser_open"
   | "fs_read"
   | "fs_write"
-  | "network_control"
-  | "network_status"
   | "pty_close"
   | "pty_open"
   | "pty_snapshot"
@@ -17,7 +13,6 @@ export type ToolId =
   | "shell_exec"
   | "slopos_runtime_diagnostics"
   | "slopos_session_snapshot"
-  | "system_control"
   | "watch"
   | "watch_list"
   | "watch_cancel";
@@ -40,16 +35,6 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     description: "Lists available desktop apps and tracked launched processes",
     safety: "read_only"
   },
-  audio_control: {
-    id: "audio_control",
-    description: "Controls audio: set volume, mute, default sink/source",
-    safety: "stateful"
-  },
-  audio_status: {
-    id: "audio_status",
-    description: "Returns current audio sinks, sources, and volume levels",
-    safety: "read_only"
-  },
   browser_open: {
     id: "browser_open",
     description: "Opens URL in browser",
@@ -65,17 +50,6 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     description: "Writes file to disk",
     safety: "destructive",
     mayRequireConfirmation: true
-  },
-  network_control: {
-    id: "network_control",
-    description: "Controls network: connect/disconnect WiFi, scan",
-    safety: "stateful",
-    mayRequireConfirmation: true
-  },
-  network_status: {
-    id: "network_status",
-    description: "Returns active network connections and WiFi networks",
-    safety: "read_only"
   },
   pty_close: {
     id: "pty_close",
@@ -112,12 +86,6 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     id: "slopos_session_snapshot",
     description: "Returns bridge-known slopOS session state",
     safety: "read_only"
-  },
-  system_control: {
-    id: "system_control",
-    description: "Runs system control actions (bluetooth, panic dismiss)",
-    safety: "destructive",
-    mayRequireConfirmation: true
   },
   watch: {
     id: "watch",
