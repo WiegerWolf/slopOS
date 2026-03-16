@@ -1,0 +1,189 @@
+<svg viewBox="0 0 512 512" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- 
+      THE SLOP INTAKE (Input Jet)
+      Raw, unstructured AI potential flowing in from the left.
+    -->
+    <linearGradient id="slopIn" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#06B6D4" />   <!-- Intent / API Trigger -->
+      <stop offset="100%" stop-color="#6366F1" /> <!-- Planner / Bridge Approach -->
+    </linearGradient>
+
+    <!-- 
+      THE MATERIALIZED OUTPUT (UI Cards & Extrusions)
+      Structured, vibrant, perfectly formed OS artifacts.
+    -->
+    <linearGradient id="slopOut" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8B5CF6" />   <!-- Extruded from Bridge -->
+      <stop offset="60%" stop-color="#EC4899" />  <!-- Materialized TSX Surface -->
+      <stop offset="100%" stop-color="#F43F5E" /> <!-- Final State -->
+    </linearGradient>
+
+    <!-- The Bridge/Prism Glass -->
+    <linearGradient id="glassEdge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#ffffff" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.8" />
+    </linearGradient>
+
+    <!-- Filters for Depth, Motion, and Glow -->
+    <filter id="floatShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="8" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.3" />
+      <feDropShadow dx="4" dy="4" stdDeviation="6" flood-color="#6366F1" flood-opacity="0.2" />
+    </filter>
+
+    <filter id="cardShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.25" />
+    </filter>
+
+    <filter id="impactGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="blur1" />
+      <feGaussianBlur stdDeviation="24" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur2" />
+        <feMergeNode in="blur1" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="fluidVolume" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- 
+    ========================================================================
+    THE SLOP PRISM 
+    A literal depiction of materialization in motion.
+    Left: Raw fluid AI (The Slop) rockets forward.
+    Center: The Runtime Bridge (The Glass Prism) processes the intent.
+    Right: The fluid fractures into perfect, structured OS Windows (The UI).
+    ========================================================================
+  -->
+  <g filter="url(#floatShadow)">
+
+    <!-- 
+      1. THE SLOP JET (Raw Intent & Planning)
+      A chaotic, aerodynamic blob of liquid paint surging rightward.
+    -->
+    <g filter="url(#fluidVolume)">
+      <!-- Outer wide wave -->
+      <path d="M 40,256 C 120,200 160,110 240,110 L 240,402 C 160,402 120,312 40,256 Z" 
+            fill="url(#slopIn)" opacity="0.6" />
+      <!-- Core dense fluid stream -->
+      <path d="M 80,256 C 140,230 180,160 240,150 L 240,362 C 180,352 140,282 80,256 Z" 
+            fill="url(#slopIn)" opacity="0.9" />
+      <!-- Viscous 3D highlight showing forward velocity -->
+      <path d="M 100,256 C 150,240 190,190 240,180" 
+            fill="none" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.3" />
+            
+      <!-- Ambient/Trailing Splashes (Motion Lines) -->
+      <circle cx="60" cy="200" r="6" fill="#06B6D4" opacity="0.8" />
+      <circle cx="50" cy="300" r="4" fill="#06B6D4" opacity="0.6" />
+      <circle cx="90" cy="340" r="8" fill="#6366F1" opacity="0.8" />
+    </g>
+
+    <!-- 
+      2. THE BRIDGE / PRISM (The Core Architecture)
+      The rigid vertical pane where fluid AI is processed into structure.
+      Also acts as the Chronicle Rail.
+    -->
+    <g>
+      <!-- The Glass Pane -->
+      <rect x="240" y="60" width="24" height="392" rx="12" 
+            fill="#ffffff" fill-opacity="0.15" 
+            stroke="url(#glassEdge)" stroke-width="2" />
+      
+      <!-- The Chronicle (Vertical History Nodes on the Bridge) -->
+      <circle cx="252" cy="110" r="3" fill="#ffffff" opacity="0.4" />
+      <circle cx="252" cy="160" r="3" fill="#ffffff" opacity="0.5" />
+      <circle cx="252" cy="210" r="3" fill="#ffffff" opacity="0.6" />
+      <circle cx="252" cy="300" r="3" fill="#ffffff" opacity="0.6" />
+      <circle cx="252" cy="350" r="3" fill="#ffffff" opacity="0.4" />
+      <circle cx="252" cy="400" r="3" fill="#ffffff" opacity="0.2" />
+
+      <!-- THE INVOCATION SPARK (Active Turn / Intent Strike) -->
+      <!-- Explodes exactly where the core fluid stream hits the glass -->
+      <g filter="url(#impactGlow)" transform="translate(252, 256)">
+        <path d="M 0,-32 Q 0,0 32,0 Q 0,0 0,32 Q 0,0 -32,0 Q 0,0 0,-32 Z" fill="#ffffff" />
+        <circle cx="0" cy="0" r="10" fill="#ffffff" />
+        <circle cx="0" cy="0" r="5" fill="#06B6D4" />
+      </g>
+    </g>
+
+    <!-- 
+      3. THE EXTRUSION STREAMS (Data Materialization)
+      Horizontal beams of pure UI gradient shooting out of the glass,
+      connecting the Bridge directly to the newly formed OS surfaces.
+    -->
+    <g fill="url(#slopOut)">
+      <!-- Top Card Streams -->
+      <rect x="264" y="140" width="40" height="4" rx="2" />
+      <rect x="264" y="156" width="24" height="4" rx="2" />
+      <rect x="264" y="172" width="60" height="4" rx="2" opacity="0.6" />
+      
+      <!-- Middle Hero Window Streams -->
+      <rect x="264" y="230" width="30" height="6" rx="3" />
+      <rect x="264" y="254" width="56" height="4" rx="2" opacity="0.8" />
+      <rect x="264" y="270" width="40" height="4" rx="2" opacity="0.6" />
+      
+      <!-- Bottom Pill Streams -->
+      <rect x="264" y="340" width="36" height="4" rx="2" />
+      <rect x="264" y="356" width="20" height="4" rx="2" opacity="0.6" />
+    </g>
+
+    <!-- 
+      4. THE GENERATED SURFACES (Materialized UI Artifacts)
+      Crisp, functional, perfectly rectangular OS windows.
+      They retain the vibrant "Slop" gradient on their rims to prove 
+      they are made of the generated AI, but have dark internal OS canvases.
+    -->
+    <g filter="url(#cardShadow)">
+      
+      <!-- Surface 1: Dashboard / Workspace Artifact -->
+      <g transform="translate(290, 100)">
+        <rect width="140" height="84" rx="14" fill="url(#slopOut)" />
+        <rect x="2" y="2" width="136" height="80" rx="12" fill="#0F172A" opacity="0.95" />
+        
+        <!-- UI Structure inside -->
+        <rect x="12" y="12" width="24" height="24" rx="6" fill="#ffffff" opacity="0.8" />
+        <rect x="44" y="16" width="60" height="4" rx="2" fill="#ffffff" opacity="0.9" />
+        <rect x="44" y="26" width="40" height="4" rx="2" fill="#ffffff" opacity="0.5" />
+        
+        <rect x="12" y="48" width="54" height="24" rx="6" fill="#ffffff" opacity="0.1" />
+        <rect x="74" y="48" width="54" height="24" rx="6" fill="#ffffff" opacity="0.1" />
+      </g>
+
+      <!-- Surface 2: Terminal PTY / Active Tool (The Hero Window) -->
+      <!-- Pushed further right to emphasize explosion/velocity -->
+      <g transform="translate(320, 196)">
+        <rect width="170" height="110" rx="16" fill="url(#slopOut)" />
+        <!-- Dark OS interior -->
+        <rect x="3" y="3" width="164" height="104" rx="13" fill="#020617" opacity="0.98" />
+        
+        <!-- Classic OS Window Controls (Instant Interface Recognition) -->
+        <circle cx="16" cy="16" r="4" fill="#FF5F56" />
+        <circle cx="28" cy="16" r="4" fill="#FFBD2E" />
+        <circle cx="40" cy="16" r="4" fill="#27C93F" />
+        <rect x="12" y="28" width="146" height="2" rx="1" fill="#ffffff" opacity="0.1" />
+        
+        <!-- Generated Code/Data Lines -->
+        <rect x="16" y="44" width="40" height="6" rx="3" fill="#EC4899" />
+        <rect x="16" y="58" width="100" height="6" rx="3" fill="#ffffff" opacity="0.7" />
+        <rect x="16" y="72" width="120" height="6" rx="3" fill="#ffffff" opacity="0.7" />
+        <rect x="16" y="86" width="60" height="6" rx="3" fill="#ffffff" opacity="0.4" />
+      </g>
+
+      <!-- Surface 3: Action Pill / Status Surface -->
+      <g transform="translate(284, 324)">
+        <rect width="110" height="40" rx="20" fill="url(#slopOut)" />
+        <rect x="2" y="2" width="106" height="36" rx="18" fill="#0F172A" opacity="0.95" />
+        
+        <circle cx="20" cy="20" r="10" fill="#ffffff" opacity="0.9" />
+        <rect x="38" y="18" width="50" height="4" rx="2" fill="#ffffff" opacity="0.6" />
+      </g>
+      
+    </g>
+  </g>
+</svg>
