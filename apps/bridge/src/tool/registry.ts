@@ -7,6 +7,7 @@ import { sloposRuntimeDiagnosticsTool, sloposSessionSnapshotTool } from "./sessi
 import { systemControlTool } from "./system";
 import { audioStatusTool, audioControlTool } from "./audio";
 import { networkStatusTool, networkControlTool } from "./network";
+import { watchTool, watchListTool, watchCancelTool } from "./watch";
 import type { ToolCallInput, ToolContext, ToolDefinition, ToolResult } from "./types";
 
 const definitions: ToolDefinition[] = [
@@ -26,7 +27,10 @@ const definitions: ToolDefinition[] = [
   ptyWriteTool,
   ptySnapshotTool,
   ptyCloseTool,
-  systemControlTool
+  systemControlTool,
+  watchTool,
+  watchListTool,
+  watchCancelTool
 ];
 
 const registry = new Map(definitions.map((definition) => [definition.name, definition]));

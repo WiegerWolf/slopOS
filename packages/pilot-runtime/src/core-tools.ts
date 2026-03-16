@@ -17,7 +17,10 @@ export type ToolId =
   | "shell_exec"
   | "slopos_runtime_diagnostics"
   | "slopos_session_snapshot"
-  | "system_control";
+  | "system_control"
+  | "watch"
+  | "watch_list"
+  | "watch_cancel";
 
 export type ToolDescriptor = {
   id: ToolId;
@@ -115,6 +118,21 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     description: "Runs system control actions (bluetooth, panic dismiss)",
     safety: "destructive",
     mayRequireConfirmation: true
+  },
+  watch: {
+    id: "watch",
+    description: "Starts a background watch — runs a shell command and fires a new agent turn when it exits",
+    safety: "stateful"
+  },
+  watch_list: {
+    id: "watch_list",
+    description: "Lists active watches",
+    safety: "read_only"
+  },
+  watch_cancel: {
+    id: "watch_cancel",
+    description: "Cancels an active watch by id",
+    safety: "stateful"
   }
 };
 

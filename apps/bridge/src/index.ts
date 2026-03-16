@@ -10,6 +10,7 @@ import { beginTurn } from "./session/loop";
 import { getTurn, resolveTurnConfirmation, subscribeTurn } from "./session/store";
 import { isPanicActive, exitPanicMode } from "./session/panic";
 import { loadConfig, saveConfig, listProviders, type SlopConfig } from "./config";
+import { setWatchCallback } from "./tool/watch";
 
 const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/generated");
@@ -176,6 +177,15 @@ async function writeSurfaceModule(body: {
 
 await mkdir(generatedRuntimeRoot, { recursive: true });
 initDb();
+
+// When a watch fires, start a new agent turn with the result as context
+setWatchCallback((watchId, label, result) => {
+  const intent = `[watch fired: ${label}] exit=${result.exitCode}${result.stdout ? ` stdout=${result.stdout.slice(0, 500)}` : ""}${result.stderr ? ` stderr=${result.stderr.slice(0, 200)}` : ""}`;
+  const task = createTask(intent);
+  task.source.wakeMethod = "other";
+  beginTurn(task, undefined, (input) => handleToolCall(input, eventState), "default", { eventState });
+  console.log(`[watch] ${watchId} fired → turn for "${label}"`);
+});
 
 Bun.serve({
   port: 8787,

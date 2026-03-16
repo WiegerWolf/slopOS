@@ -408,6 +408,37 @@ audio_status: {
       required: ["args"],
     },
   },
+  watch: {
+    description: "Start a background watch. Runs a shell command; when it exits, a new agent turn fires automatically with the result. Use for monitoring, waiting on conditions, reacting to system events.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            cmd: { type: "string", description: "Shell command to run in background (e.g. 'inotifywait -e modify ./dist', 'sleep 60 && echo reminder')" },
+            label: { type: "string", description: "Human-readable label for this watch" },
+          },
+          required: ["cmd"],
+        },
+      },
+      required: ["args"],
+    },
+  },
+  watch_list: {
+    description: "List all active watches.",
+    parameters: { type: "object", properties: {} },
+  },
+  watch_cancel: {
+    description: "Cancel an active watch by id.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: { type: "object", properties: { watchId: { type: "string" } }, required: ["watchId"] },
+      },
+      required: ["args"],
+    },
+  },
 };
 
 function toolDefinitions() {
