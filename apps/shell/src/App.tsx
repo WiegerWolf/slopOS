@@ -9,12 +9,19 @@ import { surfaceRegistry } from "./surface-registry";
 type SurfaceComponentProps = { data?: Record<string, unknown>; taskId: string; artifactId: string };
 
 const dynamicCache: Record<string, React.LazyExoticComponent<React.ComponentType<SurfaceComponentProps>>> = {};
+const dynamicFailed = new Set<string>();
 
 function getDynamic(moduleId: string) {
+  // Evict previously failed modules so retries get a fresh import
+  if (dynamicFailed.has(moduleId)) {
+    delete dynamicCache[moduleId];
+    dynamicFailed.delete(moduleId);
+  }
   if (!dynamicCache[moduleId]) {
     const ts = Date.now();
     const importFn = (): Promise<{ default: React.ComponentType<SurfaceComponentProps> }> =>
       import(/* @vite-ignore */ `../generated/${moduleId}.tsx?t=${ts}`).catch((err) => {
+        dynamicFailed.add(moduleId);
         const message = err instanceof Error ? err.message : String(err);
         return {
           default: ((_props: SurfaceComponentProps) =>
@@ -314,7 +321,7 @@ function Shell() {
       <div className="canvas">
         {active ? (
           <div className="surface-wrap">
-            <Surface artifact={active} />
+            <Surface key={active.id} artifact={active} />
           </div>
         ) : (
           <div className="idle">
