@@ -345,6 +345,22 @@ const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<str
       required: ["args"],
     },
   },
+  set_theme: {
+    description: "Set the slopOS shell theme. Use when the user asks to switch between light and dark mode.",
+    parameters: {
+      type: "object",
+      properties: {
+        args: {
+          type: "object",
+          properties: {
+            theme: { type: "string", enum: ["light", "dark"], description: "The theme to apply" },
+          },
+          required: ["theme"],
+        },
+      },
+      required: ["args"],
+    },
+  },
   watch: {
     description: "Start a background watch. Runs a shell command; when it exits, a new agent turn fires automatically with the result. Use for monitoring, waiting on conditions, reacting to system events.",
     parameters: {

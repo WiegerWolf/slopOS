@@ -16,7 +16,8 @@ const workspaceRoot = "/home/n/slopos";
 const generatedRuntimeRoot = join(workspaceRoot, "apps/shell/generated");
 
 const eventState: EventState = {
-  "system.panic": undefined
+  "system.panic": undefined,
+  "system.theme": undefined
 };
 
 function json(data: unknown, init?: ResponseInit) {

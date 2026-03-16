@@ -48,6 +48,42 @@ class SurfaceErrorBoundary extends React.Component<
   }
 }
 
+// ---- Theme ----
+
+type Theme = "light" | "dark";
+
+function useTheme() {
+  const [theme, setThemeState] = React.useState<Theme>(() => {
+    const stored = localStorage.getItem("slopos:theme");
+    return stored === "light" ? "light" : "dark";
+  });
+
+  const setTheme = React.useCallback((next: Theme) => {
+    setThemeState(next);
+    localStorage.setItem("slopos:theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  }, []);
+
+  // Apply on mount
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, []);
+
+  return { theme, setTheme };
+}
+
+function ThemeToggle(props: { theme: Theme; onToggle: () => void }) {
+  return (
+    <button
+      className="theme-toggle"
+      onClick={props.onToggle}
+      title={`Switch to ${props.theme === "dark" ? "light" : "dark"} mode`}
+    >
+      {props.theme === "dark" ? "\u263C" : "\u263E"}
+    </button>
+  );
+}
+
 // ---- Shell ----
 
 type ConfigState = {
@@ -405,8 +441,29 @@ function Confirm(props: {
 // ---- Root ----
 
 export default function App() {
+  const { theme, setTheme } = useTheme();
+
+  // Watch for LLM-triggered theme changes via bridge events
+  React.useEffect(() => {
+    let active = true;
+    const poll = async () => {
+      try {
+        const res = await fetch("/api/events");
+        if (!res.ok || !active) return;
+        const data = (await res.json()) as { events: Record<string, unknown> };
+        const themeEvent = data.events["system.theme"] as { theme?: string } | undefined;
+        if (themeEvent?.theme === "light" || themeEvent?.theme === "dark") {
+          setTheme(themeEvent.theme);
+        }
+      } catch { /* bridge not ready */ }
+    };
+    const timer = window.setInterval(poll, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [setTheme]);
+
   return (
     <RuntimeProvider>
+      <ThemeToggle theme={theme} onToggle={() => setTheme(theme === "dark" ? "light" : "dark")} />
       <Shell />
     </RuntimeProvider>
   );
