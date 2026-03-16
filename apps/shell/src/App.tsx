@@ -50,6 +50,101 @@ class SurfaceErrorBoundary extends React.Component<
 
 // ---- Shell ----
 
+type ConfigState = {
+  loaded: boolean;
+  configured: boolean;
+  providers: Array<{ id: string; name: string; baseUrl: string }>;
+  provider: string;
+  model: string;
+};
+
+function Setup(props: { providers: ConfigState["providers"]; onDone: () => void }) {
+  const [provider, setProvider] = React.useState("anthropic");
+  const [apiKey, setApiKey] = React.useState("");
+  const [model, setModel] = React.useState("claude-sonnet-4-6");
+  const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState("");
+
+  const selected = props.providers.find((p) => p.id === provider);
+
+  const save = async () => {
+    if (!apiKey.trim()) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/config", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          model,
+          baseUrl: selected?.baseUrl,
+          keys: { [provider]: apiKey.trim() }
+        })
+      });
+      if (!res.ok) throw new Error("save failed");
+      props.onDone();
+    } catch {
+      setError("failed to save — is the bridge running?");
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="setup">
+      <div className="idle-mark">slopOS</div>
+      <div className="setup-subtitle">connect a model to get started</div>
+      <div className="setup-form">
+        <label className="setup-label">
+          provider
+          <select
+            className="setup-select"
+            value={provider}
+            onChange={(e) => {
+              setProvider(e.target.value);
+              const p = props.providers.find((p) => p.id === e.target.value);
+              if (p?.id === "anthropic") setModel("claude-sonnet-4-6");
+              else if (p?.id === "openai") setModel("gpt-4o");
+              else if (p?.id === "google") setModel("gemini-2.5-flash");
+              else setModel("");
+            }}
+          >
+            {props.providers.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="setup-label">
+          API key
+          <input
+            className="setup-input"
+            type="password"
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            placeholder="sk-..."
+            onKeyDown={(e) => { if (e.key === "Enter") void save(); }}
+            autoFocus
+          />
+        </label>
+        <label className="setup-label">
+          model
+          <input
+            className="setup-input"
+            value={model}
+            onChange={(e) => setModel(e.target.value)}
+            placeholder="model id"
+            onKeyDown={(e) => { if (e.key === "Enter") void save(); }}
+          />
+        </label>
+        {error ? <div className="setup-error">{error}</div> : null}
+        <button className="btn btn-primary setup-btn" onClick={save} disabled={saving || !apiKey.trim()}>
+          {saving ? "saving..." : "connect"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function Shell() {
   const {
     artifacts,
@@ -69,6 +164,20 @@ function Shell() {
   const histIdx = React.useRef(-1);
   const stash = React.useRef("");
   const active = artifacts.find((a) => a.visible);
+
+  const [config, setConfig] = React.useState<ConfigState>({ loaded: false, configured: false, providers: [], provider: "", model: "" });
+
+  React.useEffect(() => {
+    fetch("/api/config")
+      .then((r) => r.json())
+      .then((data: { keys: Record<string, string>; providers: ConfigState["providers"]; provider: string; model: string }) => {
+        const hasKey = Object.keys(data.keys).length > 0;
+        setConfig({ loaded: true, configured: hasKey, providers: data.providers, provider: data.provider, model: data.model });
+      })
+      .catch(() => setConfig({ loaded: true, configured: false, providers: [], provider: "", model: "" }));
+  }, []);
+
+  const idle = !active && !agentTurn;
 
   const invoke = React.useCallback(async () => {
     const text = input.trim();
@@ -135,6 +244,34 @@ function Shell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [pendingConfirmation, respondToConfirmation]);
 
+  if (config.loaded && !config.configured) {
+    return (
+      <div className="shell">
+        <div className="canvas">
+          <Setup providers={config.providers} onDone={() => setConfig((c) => ({ ...c, configured: true }))} />
+        </div>
+      </div>
+    );
+  }
+
+  const promptInput = (
+    <div className="prompt-row">
+      <input
+        id="prompt"
+        className="prompt-input"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void invoke();
+          else if (e.key === "ArrowUp") { e.preventDefault(); historyNav("up"); }
+          else if (e.key === "ArrowDown") { e.preventDefault(); historyNav("down"); }
+        }}
+        placeholder="what do you need?"
+        autoFocus
+      />
+    </div>
+  );
+
   return (
     <div className="shell">
       {/* Canvas */}
@@ -145,12 +282,11 @@ function Shell() {
           </div>
         ) : (
           <div className="idle">
-            <div className="idle-mark">slop</div>
+            <div className="idle-mark">slopOS</div>
             {agentTurn?.statusText ? (
               <div className="working">{agentTurn.statusText}</div>
-            ) : (
-              <div className="idle-hint">press / or ` to start</div>
-            )}
+            ) : null}
+            {idle ? promptInput : null}
           </div>
         )}
 
@@ -166,48 +302,31 @@ function Shell() {
         ) : null}
       </div>
 
-      {/* Dock */}
-      <div className="dock">
-        <div className="prompt-row">
-          <input
-            id="prompt"
-            className="prompt-input"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void invoke();
-              else if (e.key === "ArrowUp") { e.preventDefault(); historyNav("up"); }
-              else if (e.key === "ArrowDown") { e.preventDefault(); historyNav("down"); }
-            }}
-            placeholder="what do you need?"
-            autoFocus
-          />
-        </div>
+      {/* Dock — only when not idle */}
+      {!idle ? (
+        <div className="dock">
+          {promptInput}
 
-        <div className="status-line">
-          <span>
-            {agentTurn ? <span className="working-dot" /> : null}
-            {statusText || "\u00A0"}
-          </span>
-          <span>
-            <kbd>`</kbd> focus
-            {" "}
-            <kbd>Esc</kbd> dismiss
-          </span>
-        </div>
-
-        {chronicle.length > 0 ? (
-          <div className="chronicle">
-            {chronicle.slice(0, 15).map((entry) => (
-              <ChronicleChip
-                key={entry.id}
-                entry={entry}
-                onClick={() => void submitIntent(entry.title)}
-              />
-            ))}
+          <div className="status-line">
+            <span>
+              {agentTurn ? <span className="working-dot" /> : null}
+              {statusText || "\u00A0"}
+            </span>
           </div>
-        ) : null}
-      </div>
+
+          {chronicle.length > 0 ? (
+            <div className="chronicle">
+              {chronicle.slice(0, 15).map((entry) => (
+                <ChronicleChip
+                  key={entry.id}
+                  entry={entry}
+                  onClick={() => void submitIntent(entry.title)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
     </div>
   );

@@ -10,6 +10,7 @@ export type ToolId =
   | "pty_open"
   | "pty_snapshot"
   | "pty_write"
+  | "set_theme"
   | "shell_exec"
   | "slopos_runtime_diagnostics"
   | "slopos_session_snapshot"
@@ -69,6 +70,11 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
   pty_write: {
     id: "pty_write",
     description: "Writes to PTY session",
+    safety: "stateful"
+  },
+  set_theme: {
+    id: "set_theme",
+    description: "Sets the slopOS shell theme to light or dark",
     safety: "stateful"
   },
   shell_exec: {

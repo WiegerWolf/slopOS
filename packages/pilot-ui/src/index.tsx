@@ -85,7 +85,7 @@ export function ChronicleItem(props: { title: string; line: string; status: stri
   return (
     <div style={s.chronicleItem}>
       <span style={{ fontSize: 12, fontWeight: 600 }}>{props.title}</span>
-      <span style={{ fontSize: 11, color: "#777" }}>{props.status}</span>
+      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{props.status}</span>
     </div>
   );
 }
@@ -94,7 +94,7 @@ export function Meter(props: { value: number; label?: string }) {
   return (
     <div style={s.meterWrap} aria-label={props.label}>
       <div style={{ ...s.meterBar, width: `${Math.max(4, Math.min(100, props.value))}%` }} />
-      {props.label ? <span style={{ fontSize: 11, color: "#888", marginLeft: 8 }}>{props.label}</span> : null}
+      {props.label ? <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>{props.label}</span> : null}
     </div>
   );
 }
@@ -105,7 +105,7 @@ export function FactGrid(props: { items: Array<{ label: string; value: string }>
     <div style={s.factGrid}>
       {props.items.map((fact) => (
         <div key={fact.label} style={s.factCard}>
-          <div style={{ fontSize: 11, color: "#888" }}>{fact.label}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{fact.label}</div>
           <div style={{ fontSize: 13 }}>{fact.value}</div>
         </div>
       ))}
@@ -144,8 +144,8 @@ const s: Record<string, React.CSSProperties> = {
   card: {
     width: "min(100%, 800px)",
     borderRadius: 16,
-    background: "#141414",
-    border: "1px solid rgba(255, 255, 255, 0.06)",
+    background: "var(--surface-solid)",
+    border: "1px solid var(--border-subtle)",
     padding: 24
   },
   cardHead: {
@@ -156,42 +156,42 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 18,
     fontWeight: 600,
     letterSpacing: "-0.02em",
-    color: "#e8e4de"
+    color: "var(--text-strong)"
   },
   cardSub: {
     margin: "4px 0 0",
     fontSize: 12,
-    color: "#888"
+    color: "var(--text-muted)"
   },
   btn: {
     appearance: "none" as const,
-    border: "1px solid rgba(255, 255, 255, 0.12)",
+    border: "1px solid var(--btn-border)",
     borderRadius: 8,
     padding: "8px 14px",
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
-    background: "rgba(255, 255, 255, 0.08)",
-    color: "#e8e4de",
+    background: "var(--btn-bg)",
+    color: "var(--text-strong)",
     fontFamily: "inherit"
   },
   btnSec: {
     appearance: "none" as const,
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    border: "1px solid var(--border-subtle)",
     borderRadius: 8,
     padding: "8px 14px",
     fontSize: 13,
     fontWeight: 500,
     cursor: "pointer",
-    background: "rgba(255, 255, 255, 0.03)",
-    color: "#999",
+    background: "var(--surface)",
+    color: "var(--text-muted)",
     fontFamily: "inherit"
   },
   text: {
     margin: 0,
     fontSize: 13,
     lineHeight: 1.55,
-    color: "#d4d0c8"
+    color: "var(--text)"
   },
   badge: {
     display: "inline-flex",
@@ -204,12 +204,12 @@ const s: Record<string, React.CSSProperties> = {
   },
   input: {
     width: "100%",
-    border: "1px solid rgba(255, 255, 255, 0.08)",
+    border: "1px solid var(--border)",
     borderRadius: 10,
     padding: "12px 16px",
     fontSize: 14,
-    background: "rgba(255, 255, 255, 0.04)",
-    color: "#e8e4de",
+    background: "var(--surface)",
+    color: "var(--text)",
     outline: "none",
     fontFamily: "inherit"
   },
@@ -219,8 +219,8 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: "center",
     padding: "8px 12px",
     borderRadius: 10,
-    background: "rgba(255, 255, 255, 0.03)",
-    border: "1px solid rgba(255, 255, 255, 0.04)"
+    background: "var(--surface)",
+    border: "1px solid var(--border-subtle)"
   },
   meterWrap: {
     display: "flex",
@@ -229,12 +229,12 @@ const s: Record<string, React.CSSProperties> = {
     height: 6,
     borderRadius: 999,
     overflow: "hidden",
-    background: "rgba(255, 255, 255, 0.06)"
+    background: "var(--surface-hover)"
   },
   meterBar: {
     height: "100%",
     borderRadius: 999,
-    background: "rgba(255, 255, 255, 0.25)"
+    background: "var(--accent)"
   },
   factGrid: {
     display: "grid",
@@ -244,20 +244,20 @@ const s: Record<string, React.CSSProperties> = {
   factCard: {
     padding: 10,
     borderRadius: 10,
-    background: "rgba(255, 255, 255, 0.03)"
+    background: "var(--surface)"
   }
 };
 
 const tones: Record<Tone, React.CSSProperties> = {
-  primary: { color: "#d4d0c8" },
-  secondary: { color: "#c88070" },
-  accent: { color: "#aaa" },
-  muted: { color: "#777" }
+  primary: { color: "var(--text)" },
+  secondary: { color: "var(--error)" },
+  accent: { color: "var(--text-muted)" },
+  muted: { color: "var(--text-dim)" }
 };
 
 const badgeTones: Record<Tone, React.CSSProperties> = {
-  primary: { background: "rgba(255, 255, 255, 0.08)", color: "#d4d0c8" },
-  secondary: { background: "rgba(200, 120, 100, 0.15)", color: "#c88070" },
-  accent: { background: "rgba(255, 255, 255, 0.07)", color: "#aaa" },
-  muted: { background: "rgba(255, 255, 255, 0.04)", color: "#777" }
+  primary: { background: "var(--surface-hover)", color: "var(--text)" },
+  secondary: { background: "var(--surface-hover)", color: "var(--error)" },
+  accent: { background: "var(--surface)", color: "var(--text-muted)" },
+  muted: { background: "var(--surface)", color: "var(--text-dim)" }
 };

@@ -8,6 +8,7 @@ export type ToolCallInput = {
 
 export type EventState = {
   "system.panic": { active: boolean; reason?: string; timestamp?: number } | undefined;
+  "system.theme": { theme: "light" | "dark" } | undefined;
 };
 
 export type ToolResult = {

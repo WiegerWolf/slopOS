@@ -4,6 +4,7 @@ import { fsReadTool, fsWriteTool } from "./fs";
 import { ptyCloseTool, ptyOpenTool, ptySnapshotTool, ptyWriteTool } from "./pty";
 import { shellTool } from "./shell";
 import { sloposRuntimeDiagnosticsTool, sloposSessionSnapshotTool } from "./session";
+import { setThemeTool } from "./theme";
 import { watchTool, watchListTool, watchCancelTool } from "./watch";
 import type { ToolCallInput, ToolContext, ToolDefinition, ToolResult } from "./types";
 
@@ -16,6 +17,7 @@ const definitions: ToolDefinition[] = [
   appListTool,
   sloposRuntimeDiagnosticsTool,
   sloposSessionSnapshotTool,
+  setThemeTool,
   ptyOpenTool,
   ptyWriteTool,
   ptySnapshotTool,

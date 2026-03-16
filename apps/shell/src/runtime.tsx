@@ -396,7 +396,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
   const [actionLog, setActionLog] = React.useState<ActionLogEntry[]>(() => initialSnapshot?.actionLog ?? []);
   const [confirmationHistory, setConfirmationHistory] = React.useState<ConfirmationRecord[]>(() => initialSnapshot?.confirmationHistory ?? []);
   const [pendingConfirmation, setPendingConfirmation] = React.useState<PendingConfirmation | null>(null);
-  const [statusText, setStatusText] = React.useState(() => initialSnapshot?.statusText ?? "Hit ` and say what you want.");
+  const [statusText, setStatusText] = React.useState(() => initialSnapshot?.statusText ?? "");
   const [agentTurn, setAgentTurn] = React.useState<AgentTurnResponse>();
   const confirmationResolverRef = React.useRef<((approved: boolean) => void) | null>(null);
 
