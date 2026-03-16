@@ -18,7 +18,7 @@ type TurnOptions = {
   eventState?: EventState;
 };
 
-const MAX_PLANNER_ITERATIONS = 4;
+const MAX_PLANNER_ITERATIONS = 8;
 
 function turnPartBase(turnId: string, taskId: string) {
   return {
@@ -304,41 +304,12 @@ async function runTurn(
       }
 
       if (shouldReplan) {
-        if (iteration === MAX_PLANNER_ITERATIONS - 1) {
-          appendHistory(sessionKey, {
-            kind: "error",
-            timestamp: Date.now(),
-            taskId: task.id,
-            message: `planner exceeded ${MAX_PLANNER_ITERATIONS} iterations`
-          });
-          appendTurnPart(turnId, {
-            ...turnPartBase(turnId, task.id),
-            kind: "turn_error",
-            message: `planner exceeded ${MAX_PLANNER_ITERATIONS} iterations`
-          });
-          return;
-        }
         continue;
-      }
-
-      if (iteration === MAX_PLANNER_ITERATIONS - 1) {
-        appendHistory(sessionKey, {
-          kind: "error",
-          timestamp: Date.now(),
-          taskId: task.id,
-          message: `planner exceeded ${MAX_PLANNER_ITERATIONS} iterations`
-        });
-        appendTurnPart(turnId, {
-          ...turnPartBase(turnId, task.id),
-          kind: "turn_error",
-          message: `planner exceeded ${MAX_PLANNER_ITERATIONS} iterations`
-        });
-        return;
       }
     }
 
     if (!spec) {
-      throw new Error("planner did not produce a final spec");
+      throw new Error(`planner did not produce a result after ${MAX_PLANNER_ITERATIONS} iterations`);
     }
 
     const response = planIntentFromSpec(task, spec);

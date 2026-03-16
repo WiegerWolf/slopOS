@@ -28,6 +28,10 @@
   --focus-ring: rgba(255, 255, 255, 0.3);
   --toast-bg: rgba(30, 30, 30, 0.95);
   --select-option-bg: #1a1a1a;
+  --status-green: #5b5;
+  --status-red: #c55;
+  --status-yellow: #da3;
+  --toggle-thumb-on: #fff;
   font-family: "IBM Plex Mono", "SF Mono", "Menlo", monospace;
   background: var(--bg);
   color: var(--text);
@@ -62,6 +66,10 @@
   --focus-ring: rgba(0, 0, 0, 0.2);
   --toast-bg: rgba(255, 255, 255, 0.95);
   --select-option-bg: #fff;
+  --status-green: #2a7;
+  --status-red: #c44;
+  --status-yellow: #b80;
+  --toggle-thumb-on: #fff;
   background: var(--bg);
   color: var(--text);
 }
@@ -499,6 +507,10 @@ body {
 @keyframes dot-pulse {
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ---- Responsive ---- */
