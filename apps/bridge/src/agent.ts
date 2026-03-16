@@ -151,22 +151,48 @@ function ensureImports(code: string): string {
     header += 'import React from "react";\n';
   }
 
-  if (!code.includes("@slopos/ui")) {
-    // Scan which UI components are actually used and import them
-    const uiComponents = ["Badge", "Button", "Card", "Column", "Row", "Text", "Meter", "FactGrid", "SectionList", "Screen", "PromptBox", "Toast"];
-    const used = uiComponents.filter((c) => code.includes(c));
-    if (used.length > 0) {
-      header += `import { ${used.join(", ")} } from "@slopos/ui";\n`;
+  {
+    // Check each UI component individually — the LLM may import some but not all
+    const uiComponents = ["Badge", "Button", "Card", "Column", "Row", "Text", "Meter", "FactGrid", "SectionList", "Screen", "PromptBox", "Toast", "Dot", "Spacer"];
+    const uiImportRe = /import\s*\{([^}]*)\}\s*from\s*["']@slopos\/ui["']/;
+    const uiMatch = code.match(uiImportRe);
+    const uiAlready = uiMatch ? uiMatch[1] : "";
+    const uiMissing = uiComponents.filter(
+      (c) => new RegExp(`\\b${c}\\b`).test(code) && !uiAlready.includes(c)
+    );
+    if (uiMissing.length > 0) {
+      if (uiMatch) {
+        const existing = uiMatch[1].trim().replace(/,\s*$/, "");
+        const merged = existing + ", " + uiMissing.join(", ");
+        code = code.replace(uiImportRe, `import { ${merged} } from "@slopos/ui"`);
+      } else {
+        header += `import { ${uiMissing.join(", ")} } from "@slopos/ui";\n`;
+      }
     }
   }
 
-  if (!code.includes("@slopos/host")) {
-    const hostImports: string[] = [];
-    if (code.includes("useHost")) hostImports.push("useHost");
-    if (code.includes("useEvent")) hostImports.push("useEvent");
-    if (code.includes("SurfaceProps")) hostImports.push("type SurfaceProps");
-    if (hostImports.length > 0) {
-      header += `import { ${hostImports.join(", ")} } from "@slopos/host";\n`;
+  {
+    // Check each host symbol individually — the LLM may import some but not all
+    const hostSymbols = [
+      { name: "useHost", pattern: /\buseHost\b/ },
+      { name: "useEvent", pattern: /\buseEvent\b/ },
+      { name: "type SurfaceProps", pattern: /\bSurfaceProps\b/ },
+    ];
+    const importLineRe = /import\s*\{([^}]*)\}\s*from\s*["']@slopos\/host["']/;
+    const existingMatch = code.match(importLineRe);
+    const alreadyImported = existingMatch ? existingMatch[1] : "";
+    const missing = hostSymbols.filter(
+      (s) => s.pattern.test(code) && !alreadyImported.includes(s.name.replace("type ", ""))
+    );
+    if (missing.length > 0) {
+      if (existingMatch) {
+        // Patch the existing import line to include missing symbols
+        const existing = existingMatch[1].trim().replace(/,\s*$/, "");
+        const merged = existing + ", " + missing.map((s) => s.name).join(", ");
+        code = code.replace(importLineRe, `import { ${merged} } from "@slopos/host"`);
+      } else {
+        header += `import { ${missing.map((s) => s.name).join(", ")} } from "@slopos/host";\n`;
+      }
     }
   }
 
