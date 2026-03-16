@@ -2,7 +2,7 @@ import React from "react";
 import { RuntimeProvider, SurfaceBoundary, useRuntime } from "./runtime";
 import type { Artifact, ChronicleEntry } from "@slopos/runtime";
 import { surfaceRegistry } from "./surface-registry";
-import { useNotifications } from "./notifications";
+
 
 // ---- Dynamic surface loader ----
 
@@ -68,7 +68,6 @@ function Shell() {
   });
   const histIdx = React.useRef(-1);
   const stash = React.useRef("");
-  const { notifications, dismiss } = useNotifications();
   const active = artifacts.find((a) => a.visible);
 
   const invoke = React.useCallback(async () => {
@@ -210,17 +209,6 @@ function Shell() {
         ) : null}
       </div>
 
-      {/* Toasts */}
-      {notifications.length > 0 ? (
-        <div className="toast-rail">
-          {notifications.map((n) => (
-            <div key={n.id} className="toast">
-              <span>{n.summary}</span>
-              <button className="toast-dismiss" onClick={() => dismiss(n.id)}>x</button>
-            </div>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }

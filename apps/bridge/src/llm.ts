@@ -111,7 +111,7 @@ function coercePlannerSpec(value: unknown, task: Task): PlannerSpec | null {
   }
 
   const surfaceRecord = surface as Record<string, unknown>;
-  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "runtime" && surfaceRecord.kind !== "browser" && surfaceRecord.kind !== "generated") {
+  if (surfaceRecord.kind !== "existing" && surfaceRecord.kind !== "runtime" && surfaceRecord.kind !== "generated") {
     return null;
   }
 
@@ -178,7 +178,7 @@ function plannerSystemPrompt() {
         "",
         "Available imports (ONLY these — no other packages exist):",
         '  import React from "react";',
-        '  import { Badge, Button, Card, Column, Row, Text, Meter, FactGrid, SectionList } from "@slopos/ui";',
+        '  import { Badge, Button, Card, Column, Row, Text, Meter, FactGrid, SectionList, Toast } from "@slopos/ui";',
         '  import { useHost, useEvent, type SurfaceProps } from "@slopos/host";',
         "",
         "Component contract:",
@@ -195,6 +195,7 @@ function plannerSystemPrompt() {
         "  Meter(value 0-100, label?) — progress/level bar",
         "  FactGrid(items: {label,value}[]) — key-value pairs",
         "  SectionList(sections: {title, lines}[]) — grouped text",
+        "  Toast(tone?, onDismiss?, children) — ephemeral notification banner",
         "",
         "Rules for generated code:",
         "  - Embed tool results data directly in the component (in props.data or inline)",
@@ -202,9 +203,6 @@ function plannerSystemPrompt() {
         "  - Keep it focused — one card, clear data, useful actions",
         "  - TypeScript/TSX syntax, React functional component",
         "  - NO external imports beyond the three listed above",
-        "",
-        "### browser — an embedded browser pane (for web URLs)",
-        "Set surface.url to the target URL.",
         "",
         "### runtime — legacy template surface (avoid, use generated instead)",
         "",
@@ -215,11 +213,11 @@ function plannerSystemPrompt() {
             summaryTitle: "string — Chronicle title",
             summaryLine: "string — Chronicle description",
             surface: {
-                kind: "existing|generated|browser|runtime",
+                kind: "existing|generated|runtime",
                 moduleId: "for existing: " + surfaces.map((s) => s.id).join("|"),
                 title: "string",
                 retention: "ephemeral|collapsed|persistent|pinned|background",
-                url: "for browser: target URL",
+                url: "optional URL for context",
                 data: "object — passed to component as props.data",
                 generated: {
                     code: "string — full TSX source code",
@@ -238,7 +236,7 @@ function plannerSystemPrompt() {
         "## Strategy",
         "- For system controls (audio, network, bluetooth): use existing surfaces — they have live event subscriptions.",
         "- For information display, analysis, status dashboards: use generated — write a surface that shows the data you gathered.",
-        "- For web pages: use browser.",
+        "- For web pages: use generated with a browser_open tool call.",
         "- Always gather real data with tools before generating a surface. Never invent system state.",
         "- Prefer generated surfaces over runtime. Runtime is a fixed template with limited fields."
     ].join("\n");
@@ -315,20 +313,7 @@ const TOOL_SCHEMAS: Record<string, { description: string; parameters: Record<str
       required: ["args"],
     },
   },
-  browser_active_tab: {
-    description: "Get the currently focused browser tab.",
-    parameters: { type: "object", properties: {} },
-  },
-  browser_page_snapshot: {
-    description: "Get a text snapshot of the current browser page.",
-    parameters: {
-      type: "object",
-      properties: {
-        args: { type: "object", properties: { command: { type: "string", description: "Optional command like 'click', 'scroll', 'type'" } } },
-      },
-    },
-  },
-  audio_status: {
+audio_status: {
     description: "Get current audio/volume state.",
     parameters: { type: "object", properties: {} },
   },

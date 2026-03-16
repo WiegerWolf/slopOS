@@ -30,7 +30,7 @@ export type PlannerSpec = {
   summaryTitle: string;
   summaryLine: string;
   surface: {
-    kind: "existing" | "runtime" | "browser" | "generated";
+    kind: "existing" | "runtime" | "generated";
     moduleId?: ExistingModuleId;
     title: string;
     retention: RetentionMode;
@@ -389,22 +389,6 @@ function buildResponseFromSpec(task: Task, spec: PlannerSpec): AgentTurnResponse
         }
       }
     );
-  } else {
-    operations.push({
-      type: "create_artifact",
-      artifact: {
-        id: `${task.id}-browser-artifact`,
-        artifactType: "browser",
-        title: spec.surface.title,
-        renderer: "native",
-        retention: sanitizeRetention(spec.surface.retention),
-        placement: "center",
-        payload: {
-          title: spec.surface.title,
-          url: spec.surface.url ?? "https://vite.dev/guide/"
-        }
-      }
-    });
   }
 
   operations.push({

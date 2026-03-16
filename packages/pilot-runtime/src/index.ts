@@ -15,11 +15,7 @@ export type RetentionMode =
   | "pinned"
   | "background";
 
-export type ArtifactType =
-  | "surface"
-  | "terminal"
-  | "file"
-  | "note";
+export type ArtifactType = "surface";
 
 export type Task = {
   id: string;
