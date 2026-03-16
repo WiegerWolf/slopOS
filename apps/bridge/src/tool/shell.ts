@@ -35,7 +35,9 @@ export const shellTool: ToolDefinition = {
     return {
       ok: result.ok,
       output: result,
-      error: result.ok ? undefined : result.timedOut ? "command timed out" : result.stderr || `command exited with ${result.exitCode}`,
+      error: result.ok ? undefined : result.timedOut
+        ? `command timed out: ${command}`
+        : `\`${command}\` failed (exit ${result.exitCode})${result.stderr ? `: ${result.stderr.slice(0, 500)}` : ""}`,
       events: context.eventState
     };
   }

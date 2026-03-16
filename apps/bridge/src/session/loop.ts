@@ -178,126 +178,106 @@ async function runTurn(
             taskId: task.id,
             message: result.error ?? `${tool.name} failed`
           });
-          if (!result.confirmationRequired) {
-            const retryResult = await runTool({
+
+          if (result.confirmationRequired) {
+            const confirmationId = crypto.randomUUID();
+            appendTurnPart(turnId, {
+              ...turnPartBase(turnId, task.id),
+              kind: "confirmation_request",
+              confirmation: {
+                id: confirmationId,
+                title: result.confirmationRequired.title,
+                message: result.confirmationRequired.message,
+                tool: {
+                  name: tool.name,
+                  args: tool.args
+                }
+              }
+            });
+
+            const approved = await waitForTurnConfirmation(turnId, confirmationId);
+
+            appendTurnPart(turnId, {
+              ...turnPartBase(turnId, task.id),
+              kind: "confirmation_result",
+              confirmation: {
+                id: confirmationId,
+                approved
+              }
+            });
+
+            if (!approved) {
+              appendTurnPart(turnId, {
+                ...turnPartBase(turnId, task.id),
+                kind: "turn_error",
+                message: "user declined confirmation"
+              });
+              return;
+            }
+
+            const confirmedResult = await runTool({
               name: tool.name,
               args: tool.args,
-              options: tool.options
-            });
-            watchdog = resetWatchdog(watchdog);
-
-            if (retryResult.ok) {
-              toolResults[toolResults.length - 1] = {
-                name: tool.name,
-                ok: retryResult.ok,
-                output: retryResult.output,
-                error: retryResult.error
-              };
-              shouldReplan = true;
-              break;
-            }
-
-            appendTurnPart(turnId, {
-              ...turnPartBase(turnId, task.id),
-              kind: "turn_error",
-              message: result.error ?? `${tool.name} failed`
-            });
-            return;
-          }
-
-          const confirmationId = crypto.randomUUID();
-          appendTurnPart(turnId, {
-            ...turnPartBase(turnId, task.id),
-            kind: "confirmation_request",
-            confirmation: {
-              id: confirmationId,
-              title: result.confirmationRequired.title,
-              message: result.confirmationRequired.message,
-              tool: {
-                name: tool.name,
-                args: tool.args
+              options: {
+                ...(tool.options ?? {}),
+                confirm: true
               }
-            }
-          });
+            });
 
-          const approved = await waitForTurnConfirmation(turnId, confirmationId);
+            toolResults.push({
+              name: tool.name,
+              ok: confirmedResult.ok,
+              output: confirmedResult.output,
+              error: confirmedResult.error
+            });
 
-          appendTurnPart(turnId, {
-            ...turnPartBase(turnId, task.id),
-            kind: "confirmation_result",
-            confirmation: {
-              id: confirmationId,
-              approved
-            }
-          });
+            const confirmedToolCallId = crypto.randomUUID();
+            appendHistory(sessionKey, {
+              kind: "tool_call",
+              timestamp: Date.now(),
+              taskId: task.id,
+              toolCallId: confirmedToolCallId,
+              tool: tool.name,
+              args: tool.args,
+              options: { ...(tool.options ?? {}), confirm: true }
+            });
 
-          if (!approved) {
+            appendHistory(sessionKey, {
+              kind: "tool_result",
+              timestamp: Date.now(),
+              taskId: task.id,
+              toolCallId: confirmedToolCallId,
+              tool: tool.name,
+              ok: confirmedResult.ok,
+              output: confirmedResult.output,
+              error: confirmedResult.error
+            });
+
             appendTurnPart(turnId, {
               ...turnPartBase(turnId, task.id),
-              kind: "turn_error",
-              message: "user declined confirmation"
+              kind: "tool_result",
+              tool: {
+                name: tool.name
+              },
+              ok: confirmedResult.ok,
+              output: confirmedResult.output,
+              error: confirmedResult.error
             });
-            return;
-          }
 
-          const confirmedResult = await runTool({
-            name: tool.name,
-            args: tool.args,
-            options: {
-              ...(tool.options ?? {}),
-              confirm: true
+            if (!confirmedResult.ok) {
+              appendTurnPart(turnId, {
+                ...turnPartBase(turnId, task.id),
+                kind: "turn_error",
+                message: confirmedResult.error ?? `${tool.name} failed after confirmation`
+              });
+              return;
             }
-          });
 
-          toolResults.push({
-            name: tool.name,
-            ok: confirmedResult.ok,
-            output: confirmedResult.output,
-            error: confirmedResult.error
-          });
-
-          const confirmedToolCallId = crypto.randomUUID();
-          appendHistory(sessionKey, {
-            kind: "tool_call",
-            timestamp: Date.now(),
-            taskId: task.id,
-            toolCallId: confirmedToolCallId,
-            tool: tool.name,
-            args: tool.args,
-            options: { ...(tool.options ?? {}), confirm: true }
-          });
-
-          appendHistory(sessionKey, {
-            kind: "tool_result",
-            timestamp: Date.now(),
-            taskId: task.id,
-            toolCallId: confirmedToolCallId,
-            tool: tool.name,
-            ok: confirmedResult.ok,
-            output: confirmedResult.output,
-            error: confirmedResult.error
-          });
-
-          appendTurnPart(turnId, {
-            ...turnPartBase(turnId, task.id),
-            kind: "tool_result",
-            tool: {
-              name: tool.name
-            },
-            ok: confirmedResult.ok,
-            output: confirmedResult.output,
-            error: confirmedResult.error
-          });
-
-          if (!confirmedResult.ok) {
-            appendTurnPart(turnId, {
-              ...turnPartBase(turnId, task.id),
-              kind: "turn_error",
-              message: confirmedResult.error ?? `${tool.name} failed after confirmation`
-            });
-            return;
+            shouldReplan = true;
+            break;
           }
 
+          // Non-confirmation failure: let the planner see the error and try a different approach
           shouldReplan = true;
           break;
         }
