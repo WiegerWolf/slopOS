@@ -27,3 +27,24 @@
 - keep the same task/artifact model
 - move from fullscreen shell app toward compositor-managed shell surfaces
 - preserve generated TSX surface runtime as the UI layer
+
+# North star
+
+So the final architecture is one binary:
+
+  tauri binary
+    ├── rust backend (bridge: agent loop, tools, LLM API, SQLite)
+    ├── embedded static assets (the React shell, pre-built)
+    └── swc (Rust-native TSX transpiler for generated surfaces at runtime)
+
+  One process. No Bun. No Vite. No Node. Just a Rust binary that serves a webview and transpiles whatever
+  the LLM comes up with on the fly using swc (which is already written in Rust).
+
+  During development, you'd still use Vite dev server + cargo tauri dev — Tauri points the webview at
+  localhost:5173 so you get hot reload. Normal Tauri workflow.
+
+  During production (the actual bootable session), it's just the one binary. The shell is static assets
+  embedded in it. Generated surfaces are the only dynamic part — LLM produces TSX, swc compiles to JS,
+  webview imports it.
+
+  That's the end state.
