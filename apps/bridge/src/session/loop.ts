@@ -18,7 +18,7 @@ type TurnOptions = {
   eventState?: EventState;
 };
 
-const MAX_PLANNER_ITERATIONS = 8;
+const MAX_PLANNER_ITERATIONS = 64;
 
 function turnPartBase(turnId: string, taskId: string) {
   return {
