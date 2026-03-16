@@ -1,17 +1,13 @@
 export type CoreSurfaceId =
   | "audio-mixer"
   | "bluetooth-connect-flow"
-  | "browser-inspector"
   | "coding-workspace"
   | "diagnostics-inspector"
   | "network-panel"
   | "panic-overlay"
-  | "runtime-surface"
   | "session-inspector"
   | "settings-panel"
   | "terminal-surface";
-
-export type ExistingModuleId = Exclude<CoreSurfaceId, "runtime-surface">;
 
 export type CoreSurfaceDescriptor = {
   id: CoreSurfaceId;
@@ -35,13 +31,6 @@ export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor
     subtitle: "Task surface for pairing and connecting audio devices.",
     capabilities: ["bluetooth", "audio routing"]
   },
-  "browser-inspector": {
-    id: "browser-inspector",
-    title: "Browser Session Inspector",
-    subtitle: "Persistent browser-state observer for embedded web workspaces.",
-    capabilities: ["browser session", "refreshable", "persistent"],
-    refreshTool: "browser_session_snapshot"
-  },
   "coding-workspace": {
     id: "coding-workspace",
     title: "Coding Workspace",
@@ -51,7 +40,7 @@ export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor
   "diagnostics-inspector": {
     id: "diagnostics-inspector",
     title: "slopOS Diagnostics",
-    subtitle: "Persistent runtime diagnostics surface for bridge health, versions, and active state.",
+    subtitle: "Persistent runtime diagnostics surface for bridge health and active state.",
     capabilities: ["diagnostics", "refreshable", "persistent"],
     refreshTool: "slopos_runtime_diagnostics"
   },
@@ -73,12 +62,6 @@ export const coreSurfaceDescriptors: Record<CoreSurfaceId, CoreSurfaceDescriptor
     title: "Settings",
     subtitle: "Model and provider configuration panel.",
     capabilities: ["settings", "config", "provider", "model"]
-  },
-  "runtime-surface": {
-    id: "runtime-surface",
-    title: "Runtime Surface",
-    subtitle: "Generated task surface written at runtime by the bridge.",
-    capabilities: ["generated UI", "task summary"]
   },
   "session-inspector": {
     id: "session-inspector",
@@ -103,17 +86,6 @@ export function listCoreSurfaceDescriptors() {
   return Object.values(coreSurfaceDescriptors);
 }
 
-export function isExistingModuleId(input: unknown): input is ExistingModuleId {
-  return (
-    input === "audio-mixer" ||
-    input === "bluetooth-connect-flow" ||
-    input === "browser-inspector" ||
-    input === "coding-workspace" ||
-    input === "diagnostics-inspector" ||
-    input === "network-panel" ||
-    input === "panic-overlay" ||
-    input === "session-inspector" ||
-    input === "settings-panel" ||
-    input === "terminal-surface"
-  );
+export function isExistingModuleId(input: unknown): input is CoreSurfaceId {
+  return typeof input === "string" && input in coreSurfaceDescriptors;
 }

@@ -1,7 +1,6 @@
 import React from "react";
 import { RuntimeProvider, SurfaceBoundary, useRuntime } from "./runtime";
 import type { Artifact, ChronicleEntry } from "@slopos/runtime";
-import BrowserArtifact from "./browser-artifact";
 import { surfaceRegistry } from "./surface-registry";
 import { useNotifications } from "./notifications";
 
@@ -16,7 +15,6 @@ function getDynamic(moduleId: string) {
     const ts = Date.now();
     const importFn = (): Promise<{ default: React.ComponentType<SurfaceComponentProps> }> =>
       import(/* @vite-ignore */ `../generated/${moduleId}.tsx?t=${ts}`).catch((err) => {
-        // Return a fallback component that shows the compile/import error
         const message = err instanceof Error ? err.message : String(err);
         return {
           default: ((_props: SurfaceComponentProps) =>
@@ -60,8 +58,6 @@ function Shell() {
     submitIntent,
     agentTurn,
     pendingConfirmation,
-    protocolIssue,
-    clearProtocolIssue,
     respondToConfirmation
   } = useRuntime();
 
@@ -78,7 +74,6 @@ function Shell() {
   const invoke = React.useCallback(async () => {
     const text = input.trim();
     if (!text) return;
-    // Push to history (dedupe consecutive)
     if (history[0] !== text) history.unshift(text);
     if (history.length > 100) history.length = 100;
     localStorage.setItem("slopos:prompt-history", JSON.stringify(history));
@@ -107,30 +102,18 @@ function Shell() {
     }
   }, [history, input]);
 
-  // Dismiss active surface — sets visibility to false
-  const dismissSurface = React.useCallback(() => {
-    if (!active) return;
-    // Trigger a dismiss via setting the artifact hidden.
-    // The runtime exposes artifact mutation through setArtifacts.
-    // For now, re-invoke an empty-ish action. Actually, we need
-    // to use the runtime's artifact state setter.
-    // We'll just hide by toggling the visible flag via a direct state update.
-  }, [active]);
-
   // Global keyboard shortcuts
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
 
-      // Backtick: focus prompt (always)
       if (e.key === "`") {
         e.preventDefault();
         (document.getElementById("prompt") as HTMLInputElement)?.focus();
         return;
       }
 
-      // Escape: cancel confirmation, or dismiss surface, or blur input
       if (e.key === "Escape") {
         if (pendingConfirmation) {
           respondToConfirmation(false);
@@ -143,7 +126,6 @@ function Shell() {
         return;
       }
 
-      // / : focus prompt if not already in an input
       if (e.key === "/" && !isInput) {
         e.preventDefault();
         (document.getElementById("prompt") as HTMLInputElement)?.focus();
@@ -182,19 +164,6 @@ function Shell() {
             onApprove={() => respondToConfirmation(true)}
             onDeny={() => respondToConfirmation(false)}
           />
-        ) : null}
-
-        {protocolIssue ? (
-          <div className="overlay">
-            <div className="overlay-card">
-              <h3>Protocol mismatch</h3>
-              <p>{protocolIssue.message}</p>
-              <div className="overlay-actions">
-                <button className="btn btn-primary" onClick={() => window.location.reload()}>Reload</button>
-                <button className="btn" onClick={clearProtocolIssue}>Dismiss</button>
-              </div>
-            </div>
-          </div>
         ) : null}
       </div>
 
@@ -259,14 +228,6 @@ function Shell() {
 // ---- Surface rendering ----
 
 function Surface(props: { artifact: Artifact }) {
-  if (props.artifact.type === "browser") {
-    return (
-      <SurfaceBoundary artifact={props.artifact}>
-        <BrowserArtifact artifact={props.artifact} />
-      </SurfaceBoundary>
-    );
-  }
-
   const moduleId = String(props.artifact.payload.moduleId ?? "");
   let Component = surfaceRegistry[moduleId];
 
@@ -317,7 +278,6 @@ function Confirm(props: {
   onApprove: () => void;
   onDeny: () => void;
 }) {
-  // Auto-focus the approve button so Enter confirms
   const approveRef = React.useRef<HTMLButtonElement>(null);
   React.useEffect(() => { approveRef.current?.focus(); }, []);
 

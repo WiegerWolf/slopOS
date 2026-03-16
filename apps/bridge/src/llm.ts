@@ -1,8 +1,6 @@
 import type { Task } from "@slopos/runtime";
 import { listCoreSurfaceDescriptors } from "@slopos/runtime";
 import {
-  heuristicNextAgentStep,
-  heuristicPlannerSpec,
   planIntentFromSpec,
   type AgentStep,
   type PlannerRuntimeContext,
@@ -513,10 +511,7 @@ export async function planSpecWithCloud(task: Task, context?: PlannerContext) {
   const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
 
   if (mode === "heuristic" || !ep.apiKey) {
-    return {
-      spec: heuristicPlannerSpec(task, context),
-      source: ep.apiKey ? "heuristic" : "heuristic_no_key"
-    };
+    throw new Error("no API key configured — open settings to add one");
   }
 
   const step = await nextAgentStepWithCloud(task, context);
@@ -536,10 +531,7 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
   const mode = readEnv("PILOT_PLANNER_MODE") ?? config.plannerMode ?? "auto";
 
   if (mode === "heuristic" || !ep.apiKey) {
-    return {
-      step: heuristicNextAgentStep(task, context),
-      source: ep.apiKey ? "heuristic" : "heuristic_no_key"
-    };
+    throw new Error("no API key configured — open settings to add one");
   }
 
   const baseUrl = normalizeBaseUrl(ep.baseUrl);
@@ -792,31 +784,8 @@ export async function nextAgentStepWithCloud(task: Task, context?: PlannerContex
       source: "cloud"
     };
     } catch (err) {
-      const isJsonError = err instanceof Error && 
-          (err.message.includes("planner returned invalid JSON") || 
-           err.name === "SyntaxError");
-
-      if (isJsonError) {
-        console.debug("[planner]", err.message);
-      } else {
-        console.error("[planner]", err instanceof Error ? err.message : err);
-      }
-
-      if (isJsonError) {
-        return {
-          step: heuristicNextAgentStep(task, context),
-          source: "heuristic_fallback"
-        };
-      }
-
-      if (mode === "cloud") {
-        throw new Error(`cloud planner failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-
-      return {
-        step: heuristicNextAgentStep(task, context),
-        source: "heuristic_fallback"
-      };
+      console.error("[planner]", err instanceof Error ? err.message : err);
+      throw err;
     }
 }
 

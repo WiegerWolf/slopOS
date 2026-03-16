@@ -2,7 +2,7 @@ import React from "react";
 import { useArtifactState, useHost, type SurfaceProps } from "@slopos/host";
 import { Button, FactGrid, Row, SectionList } from "@slopos/ui";
 import { CoreSurfaceFrame, CoreSurfaceHint } from "../core-surface-frame";
-import { connectVersionedEventStream } from "../event-stream";
+import { connectEventStream } from "../event-stream";
 
 type SessionSnapshot = {
   sessionKey: string;
@@ -112,7 +112,7 @@ export default function SessionInspector(
   }, [refresh, snapshot]);
 
   React.useEffect(() => {
-    return connectVersionedEventStream<{
+    return connectEventStream<{
       event?: {
         snapshot?: {
           sessionKey: string;

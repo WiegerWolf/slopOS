@@ -5,14 +5,7 @@ export type ToolId =
   | "app_list"
   | "audio_control"
   | "audio_status"
-  | "browser_active_tab"
-  | "browser_recent_events"
-  | "browser_workspace_claim"
-  | "browser_workspace_open_url"
   | "browser_open"
-  | "browser_page_snapshot"
-  | "browser_session_snapshot"
-  | "browser_workspace_detail"
   | "fs_read"
   | "fs_write"
   | "network_control"
@@ -54,45 +47,10 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
     description: "Returns current audio sinks, sources, and volume levels",
     safety: "read_only"
   },
-  browser_active_tab: {
-    id: "browser_active_tab",
-    description: "Returns the focused embedded browser tab and workspace",
-    safety: "read_only"
-  },
-  browser_recent_events: {
-    id: "browser_recent_events",
-    description: "Returns recent browser page-state events observed from embedded browser workspaces",
-    safety: "read_only"
-  },
-  browser_workspace_claim: {
-    id: "browser_workspace_claim",
-    description: "Claims queued control commands for an embedded browser workspace",
-    safety: "read_only"
-  },
-  browser_workspace_open_url: {
-    id: "browser_workspace_open_url",
-    description: "Queues a navigation command for an embedded browser workspace",
-    safety: "stateful"
-  },
   browser_open: {
     id: "browser_open",
     description: "Opens URL in browser",
     safety: "stateful"
-  },
-  browser_page_snapshot: {
-    id: "browser_page_snapshot",
-    description: "Returns the visible page snapshot for the focused embedded browser tab",
-    safety: "read_only"
-  },
-  browser_session_snapshot: {
-    id: "browser_session_snapshot",
-    description: "Returns known embedded browser session state",
-    safety: "read_only"
-  },
-  browser_workspace_detail: {
-    id: "browser_workspace_detail",
-    description: "Returns detailed state for a specific embedded browser workspace",
-    safety: "read_only"
   },
   fs_read: {
     id: "fs_read",
@@ -144,7 +102,7 @@ export const toolDescriptors: Record<ToolId, ToolDescriptor> = {
   },
   slopos_runtime_diagnostics: {
     id: "slopos_runtime_diagnostics",
-    description: "Returns bridge diagnostics, versions, and active runtime state",
+    description: "Returns bridge diagnostics and active runtime state",
     safety: "read_only"
   },
   slopos_session_snapshot: {

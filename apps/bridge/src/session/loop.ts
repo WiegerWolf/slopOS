@@ -4,7 +4,6 @@ import { nextAgentStepWithCloud } from "../llm";
 import { appendHistory, getRecentHistory } from "./history";
 import { appendTurnPart, closeTurn, createTurn, waitForTurnConfirmation } from "./store";
 import { startWatchdog, resetWatchdog, stopWatchdog } from "./watchdog";
-import { appendAuditEntry } from "./audit";
 import { recordTurnSuccess, recordTurnFailure } from "./panic";
 import type { Task, TurnPart } from "@slopos/runtime";
 import type { EventState, ToolResult } from "../tool/types";
@@ -44,14 +43,6 @@ export function beginTurn(task: Task, context: PlannerContext | undefined, runTo
     ...turnPartBase(turn.id, task.id),
     kind: "turn_start",
     task
-  });
-
-  void appendAuditEntry({
-    timestamp: Date.now(),
-    turnId: turn.id,
-    taskId: task.id,
-    action: "turn_start",
-    detail: task.intent
   });
 
   void runTurn(turn.id, task, context, runTool, sessionKey, options);
@@ -143,15 +134,6 @@ async function runTurn(
           }
         });
 
-        void appendAuditEntry({
-          timestamp: Date.now(),
-          turnId,
-          taskId: task.id,
-          action: "tool_call",
-          tool: tool.name,
-          detail: JSON.stringify(tool.args)
-        });
-
         const result = await runTool({
           name: tool.name,
           args: tool.args,
@@ -189,15 +171,6 @@ async function runTurn(
 
         watchdog = resetWatchdog(watchdog);
 
-        void appendAuditEntry({
-          timestamp: Date.now(),
-          turnId,
-          taskId: task.id,
-          action: "tool_result",
-          tool: tool.name,
-          detail: result.ok ? "ok" : (result.error ?? "failed")
-        });
-
         if (!result.ok) {
           appendHistory(sessionKey, {
             kind: "error",
@@ -206,7 +179,6 @@ async function runTurn(
             message: result.error ?? `${tool.name} failed`
           });
           if (!result.confirmationRequired) {
-            // Single retry for non-confirmation failures
             const retryResult = await runTool({
               name: tool.name,
               args: tool.args,
@@ -221,13 +193,6 @@ async function runTurn(
                 output: retryResult.output,
                 error: retryResult.error
               };
-              void appendAuditEntry({
-                timestamp: Date.now(),
-                turnId,
-                taskId: task.id,
-                action: "tool_retry_success",
-                tool: tool.name
-              });
               shouldReplan = true;
               break;
             }
@@ -291,7 +256,6 @@ async function runTurn(
             error: confirmedResult.error
           });
 
-          // Use a fresh ID so this doesn't duplicate the original tool_call/result pair
           const confirmedToolCallId = crypto.randomUUID();
           appendHistory(sessionKey, {
             kind: "tool_call",
@@ -403,13 +367,6 @@ async function runTurn(
       kind: "turn_complete"
     });
     recordTurnSuccess();
-
-    void appendAuditEntry({
-      timestamp: Date.now(),
-      turnId,
-      taskId: task.id,
-      action: "turn_complete"
-    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "turn failed";
     appendHistory(sessionKey, {
@@ -427,14 +384,6 @@ async function runTurn(
     if (options?.eventState) {
       recordTurnFailure(options.eventState, message);
     }
-
-    void appendAuditEntry({
-      timestamp: Date.now(),
-      turnId,
-      taskId: task.id,
-      action: "turn_error",
-      detail: message
-    });
   } finally {
     stopWatchdog(watchdog);
     closeTurn(turnId);

@@ -5,7 +5,7 @@ import { join } from "node:path";
 const SLOPOS_DIR = join(process.env.HOME ?? "/tmp", ".slopos");
 const DB_PATH = join(SLOPOS_DIR, "slopos.db");
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 let _db: Database | null = null;
 
@@ -22,12 +22,10 @@ export function initDb() {
   _db = new Database(DB_PATH);
   _db.exec("PRAGMA journal_mode = WAL");
   _db.exec("PRAGMA synchronous = NORMAL");
-  _db.exec("PRAGMA foreign_keys = ON");
 
   migrate(_db);
   recoverIncompleteTurns(_db);
   migrateJsonHistory(_db);
-  migrateJsonlAudit(_db);
 
   console.log(`slopOS database opened at ${DB_PATH}`);
 }
@@ -83,19 +81,14 @@ function migrate(db: Database) {
           data_json TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_history_session ON history(session_key, rowid);
-
-        CREATE TABLE IF NOT EXISTS audit (
-          rowid INTEGER PRIMARY KEY AUTOINCREMENT,
-          timestamp INTEGER NOT NULL,
-          turn_id TEXT,
-          task_id TEXT,
-          action TEXT NOT NULL,
-          tool TEXT,
-          detail TEXT
-        );
-        CREATE INDEX IF NOT EXISTS idx_audit_turn ON audit(turn_id);
-        CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit(timestamp);
       `);
+    }
+
+    if (currentVersion < 2) {
+      // Drop audit table if it exists from v1
+      db.exec("DROP TABLE IF EXISTS audit");
+      db.exec("DROP INDEX IF EXISTS idx_audit_turn");
+      db.exec("DROP INDEX IF EXISTS idx_audit_timestamp");
     }
 
     db.exec(
@@ -157,9 +150,8 @@ function migrateJsonHistory(db: Database) {
   if (migrated) return;
 
   const historyFile = join(SLOPOS_DIR, "bridge-history.json");
-  const legacyFile = join(process.cwd(), ".slopos", "bridge-history.json");
-  // The old history module hard-coded the workspace root
   const workspaceLegacyFile = join("/home/n/slopos", ".slopos", "bridge-history.json");
+  const legacyFile = join(process.cwd(), ".slopos", "bridge-history.json");
 
   let filePath: string | null = null;
   if (existsSync(historyFile)) filePath = historyFile;
@@ -201,62 +193,6 @@ function migrateJsonHistory(db: Database) {
   }
 
   db.exec("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('history_migrated', '1')");
-}
-
-// ---------------------------------------------------------------------------
-// One-time migration: audit.jsonl → SQLite
-// ---------------------------------------------------------------------------
-
-function migrateJsonlAudit(db: Database) {
-  const migrated = db.query<{ value: string }, []>(
-    "SELECT value FROM schema_meta WHERE key = 'audit_migrated'"
-  ).get();
-  if (migrated) return;
-
-  const auditFile = join(SLOPOS_DIR, "audit.jsonl");
-
-  if (existsSync(auditFile)) {
-    try {
-      const raw = readFileSync(auditFile, "utf8");
-      const lines = raw.split("\n").filter((l) => l.trim());
-
-      const insert = db.prepare<void, [number, string | null, string | null, string, string | null, string | null]>(
-        "INSERT INTO audit (timestamp, turn_id, task_id, action, tool, detail) VALUES (?, ?, ?, ?, ?, ?)"
-      );
-
-      db.transaction(() => {
-        for (const line of lines) {
-          try {
-            const entry = JSON.parse(line) as {
-              timestamp?: number;
-              turnId?: string;
-              taskId?: string;
-              action?: string;
-              tool?: string;
-              detail?: string;
-            };
-            insert.run(
-              entry.timestamp ?? 0,
-              entry.turnId ?? null,
-              entry.taskId ?? null,
-              entry.action ?? "unknown",
-              entry.tool ?? null,
-              entry.detail ?? null
-            );
-          } catch {
-            // skip malformed lines
-          }
-        }
-      })();
-
-      renameSync(auditFile, `${auditFile}.migrated`);
-      console.log(`migrated audit from ${auditFile}`);
-    } catch (err) {
-      console.warn("audit migration failed (non-fatal):", err);
-    }
-  }
-
-  db.exec("INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('audit_migrated', '1')");
 }
 
 // ---------------------------------------------------------------------------
@@ -326,25 +262,4 @@ export function dbPruneHistory(sessionKey: string, keepCount: number) {
   getDb().prepare<void, [string, string, number]>(
     "DELETE FROM history WHERE session_key = ? AND rowid NOT IN (SELECT rowid FROM history WHERE session_key = ? ORDER BY rowid DESC LIMIT ?)"
   ).run(sessionKey, sessionKey, keepCount);
-}
-
-// ---------------------------------------------------------------------------
-// Prepared statement accessors (audit)
-// ---------------------------------------------------------------------------
-
-export function dbInsertAudit(
-  timestamp: number,
-  turnId: string | null,
-  taskId: string | null,
-  action: string,
-  tool: string | null,
-  detail: string | null
-) {
-  try {
-    getDb().prepare<void, [number, string | null, string | null, string, string | null, string | null]>(
-      "INSERT INTO audit (timestamp, turn_id, task_id, action, tool, detail) VALUES (?, ?, ?, ?, ?, ?)"
-    ).run(timestamp, turnId, taskId, action, tool, detail);
-  } catch {
-    // audit is best-effort; never crash the bridge
-  }
 }

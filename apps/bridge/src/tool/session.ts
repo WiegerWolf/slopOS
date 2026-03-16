@@ -1,4 +1,4 @@
-import { CONTRACT_VERSIONS, listCoreSurfaceDescriptors, listToolDescriptors } from "@slopos/runtime";
+import { listCoreSurfaceDescriptors, listToolDescriptors } from "@slopos/runtime";
 import { getHistoryDiagnostics } from "../session/history";
 import { getTurnDiagnostics } from "../session/store";
 import { getSloposSession, listSloposSessions } from "../slopos-session-store";
@@ -31,14 +31,6 @@ export const sloposRuntimeDiagnosticsTool: ToolDefinition = {
     return {
       ok: true,
       output: {
-        versions: {
-          protocol: CONTRACT_VERSIONS.bridgeProtocol,
-          bridgeHistory: CONTRACT_VERSIONS.bridgeHistory,
-          shellState: CONTRACT_VERSIONS.shellState,
-          coreSurfaces: CONTRACT_VERSIONS.coreSurfaces,
-          coreTools: CONTRACT_VERSIONS.coreTools,
-          turnParts: CONTRACT_VERSIONS.turnParts
-        },
         history: {
           store: "sqlite (~/.slopos/slopos.db)",
           ...getHistoryDiagnostics()

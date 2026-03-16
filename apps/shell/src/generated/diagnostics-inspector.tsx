@@ -2,7 +2,7 @@ import React from "react";
 import { useArtifactState, useHost, type SurfaceProps } from "@slopos/host";
 import { Button, FactGrid, Row, SectionList } from "@slopos/ui";
 import { CoreSurfaceFrame, CoreSurfaceHint } from "../core-surface-frame";
-import { connectVersionedEventStream } from "../event-stream";
+import { connectEventStream } from "../event-stream";
 
 type DiagnosticsSnapshot = {
   versions?: Record<string, number>;
@@ -56,9 +56,6 @@ export const surface = {
 
 function buildFacts(snapshot: DiagnosticsSnapshot | null) {
   return [
-    { label: "Protocol", value: String(snapshot?.versions?.protocol ?? "?") },
-    { label: "Bridge history", value: String(snapshot?.versions?.bridgeHistory ?? "?") },
-    { label: "Shell state", value: String(snapshot?.versions?.shellState ?? "?") },
     { label: "Active turns", value: String(snapshot?.turns?.activeTurns ?? 0) },
     { label: "Pending confirmations", value: String(snapshot?.turns?.pendingConfirmations ?? 0) },
     { label: "Tracked sessions", value: String(snapshot?.sessions?.sessionCount ?? 0) }
@@ -122,7 +119,7 @@ export default function DiagnosticsInspector(
   }, [refresh, snapshot]);
 
   React.useEffect(() => {
-    return connectVersionedEventStream<{
+    return connectEventStream<{
       event?: {
         snapshot?: unknown;
       };

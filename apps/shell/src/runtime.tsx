@@ -12,13 +12,11 @@ import type {
   Artifact,
   ChronicleEntry,
   Operation,
-  ProtocolAck,
   Task,
   TaskStatus,
   TurnCreateResponse,
   TurnPart
 } from "@slopos/runtime";
-import { CONTRACT_VERSIONS } from "@slopos/runtime";
 import { connectTurnStream } from "./turn-stream";
 
 type EventStore = Record<string, unknown>;
@@ -51,7 +49,6 @@ type PlannerContext = {
 };
 
 type ToolEnvelope = {
-  protocolVersion?: number;
   ok: boolean;
   output: unknown;
   error?: string;
@@ -62,11 +59,6 @@ type ToolEnvelope = {
   events?: EventStore;
 };
 
-export type ProtocolIssue = {
-  message: string;
-  expectedProtocolVersion?: number;
-  receivedProtocolVersion?: number;
-};
 
 export type ActionLogEntry = {
   id: string;
@@ -109,12 +101,10 @@ type RuntimeValue = {
   actionLog: ActionLogEntry[];
   confirmationHistory: ConfirmationRecord[];
   pendingConfirmation: PendingConfirmation | null;
-  protocolIssue: ProtocolIssue | null;
   statusText: string;
   agentTurn?: AgentTurnResponse;
   submitIntent: (intent: string) => Promise<void>;
   respondToConfirmation: (approved: boolean) => void;
-  clearProtocolIssue: () => void;
   getSurfaceContext: (artifactId: string) => SurfaceContextValue;
   host: Host;
   updateArtifactById: (artifactId: string, patch: Parameters<Host["updateArtifact"]>[0]) => void;
@@ -126,7 +116,7 @@ type RuntimeValue = {
 const RuntimeContext = React.createContext<RuntimeValue | null>(null);
 
 const LEGACY_SHELL_STORAGE_KEYS = ["slopos.shell.state", "slopos.shell.state.v1"];
-const SHELL_STORAGE_KEY = `slopos.shell.state.v${CONTRACT_VERSIONS.shellState}`;
+const SHELL_STORAGE_KEY = "slopos.shell.state.v2";
 
 type PersistedShellState = {
   version: number;
@@ -144,12 +134,12 @@ function migrateShellState(input: Partial<PersistedShellState>): PersistedShellS
   }
 
   const version = typeof input.version === "number" ? input.version : 0;
-  if (version > CONTRACT_VERSIONS.shellState) {
+  if (version > 2) {
     return null;
   }
 
   return {
-    version: CONTRACT_VERSIONS.shellState,
+    version: 2,
     tasks: Array.isArray(input.tasks) ? input.tasks.map((task) => restoreTask(task as Task)) : createInitialTasks(),
     chronicle: Array.isArray(input.chronicle) ? input.chronicle as ChronicleEntry[] : createInitialChronicle(),
     artifacts: Array.isArray(input.artifacts) ? (input.artifacts as Artifact[]).map((artifact) => restoreArtifact(artifact)) : [],
@@ -160,7 +150,7 @@ function migrateShellState(input: Partial<PersistedShellState>): PersistedShellS
 }
 
 type ArtifactRestoreMetadata = {
-  strategy: "surface" | "terminal_surface" | "browser_artifact";
+  strategy: "surface" | "terminal_surface";
   moduleId?: string;
 };
 
@@ -184,7 +174,6 @@ function createInitialTasks(): Task[] {
       chronicleEntryId: "chronicle-boot",
       parentTaskId: null,
       priority: "foreground",
-      confirmationRequests: [],
       logs: [],
       summary: {
         title: "Booted shell",
@@ -207,7 +196,7 @@ function restoreTask(task: Task): Task {
   ) {
     return {
       ...task,
-      status: "backgrounded",
+      status: "cancelled",
       updatedAt: Date.now(),
       logs: [...task.logs, { timestamp: Date.now(), message: "Recovered after shell reload" }]
     };
@@ -218,18 +207,6 @@ function restoreTask(task: Task): Task {
 
 function withRestoreMetadata(artifact: Artifact): Artifact {
   const moduleId = typeof artifact.payload.moduleId === "string" ? artifact.payload.moduleId : undefined;
-
-  if (artifact.type === "browser") {
-    return {
-      ...artifact,
-      payload: {
-        ...artifact.payload,
-        restoreMeta: {
-          strategy: "browser_artifact"
-        } satisfies ArtifactRestoreMetadata
-      }
-    };
-  }
 
   if (!moduleId || artifact.type !== "surface") {
     return artifact;
@@ -253,18 +230,6 @@ function restoreArtifact(artifact: Artifact): Artifact {
   const restoreMeta = artifact.payload.restoreMeta as ArtifactRestoreMetadata | undefined;
   if (!restoreMeta) {
     return artifact;
-  }
-
-  if (artifact.type === "browser") {
-    return {
-      ...artifact,
-      updatedAt: Date.now(),
-      payload: {
-        ...artifact.payload,
-        restoredFromPersistence: true,
-        restoreStrategy: restoreMeta.strategy
-      }
-    };
   }
 
   if (artifact.type !== "surface") {
@@ -311,68 +276,6 @@ function persistShellState(state: PersistedShellState) {
   }
 
   window.localStorage.setItem(SHELL_STORAGE_KEY, JSON.stringify(state));
-}
-
-function extractBrowserSessions(artifacts: Artifact[]) {
-  return artifacts
-    .filter((artifact) => artifact.type === "browser")
-    .map((artifact) => {
-      const data = (artifact.payload.data as Record<string, unknown> | undefined) ?? {};
-      const tabs = Array.isArray(data.tabs)
-        ? data.tabs.flatMap((entry) => {
-            if (!entry || typeof entry !== "object") {
-              return [];
-            }
-
-            const url = typeof (entry as { url?: unknown }).url === "string" ? (entry as { url: string }).url : undefined;
-            if (!url) {
-              return [];
-            }
-
-            return [{
-              id: typeof (entry as { id?: unknown }).id === "string" ? (entry as { id: string }).id : crypto.randomUUID(),
-              title: typeof (entry as { title?: unknown }).title === "string" ? (entry as { title: string }).title : url,
-              url,
-              previewText: typeof (entry as { previewText?: unknown }).previewText === "string"
-                ? (entry as { previewText: string }).previewText
-                : undefined,
-              captureState: (entry as { captureState?: unknown }).captureState === "available" || (entry as { captureState?: unknown }).captureState === "unavailable"
-                ? (entry as { captureState: "available" | "unavailable" }).captureState
-                : undefined
-            }];
-          })
-        : [];
-
-      const activeTab = data.activeTab && typeof data.activeTab === "object"
-        ? data.activeTab as Record<string, unknown>
-        : undefined;
-
-      return {
-        artifactId: artifact.id,
-        title: artifact.title,
-        activeUrl:
-          typeof data.url === "string"
-            ? data.url
-            : typeof artifact.payload.url === "string"
-              ? artifact.payload.url
-              : "",
-        tabCount: typeof data.tabCount === "number" ? data.tabCount : tabs.length,
-        sessionSummary: typeof data.sessionSummary === "string" ? data.sessionSummary : undefined,
-        activeTab: activeTab
-          ? {
-              id: typeof activeTab.id === "string" ? activeTab.id : undefined,
-              title: typeof activeTab.title === "string" ? activeTab.title : undefined,
-              url: typeof activeTab.url === "string" ? activeTab.url : undefined,
-              previewText: typeof activeTab.previewText === "string" ? activeTab.previewText : undefined,
-              captureState: activeTab.captureState === "available" || activeTab.captureState === "unavailable"
-                ? activeTab.captureState
-                : undefined
-            }
-          : undefined,
-        tabs,
-        updatedAt: artifact.updatedAt
-      };
-    });
 }
 
 function extractSloposSessionSnapshot(input: {
@@ -437,12 +340,10 @@ function createChronicleEntry(task: Task, artifacts: Artifact[]): ChronicleEntry
     updatedAt: Date.now(),
     title: task.summary.title,
     oneLine: task.summary.oneLine,
-    status: task.status === "failed" ? "failed" : task.status === "backgrounded" ? "background" : "completed",
+    status: task.status === "failed" ? "failed" : task.status === "cancelled" ? "cancelled" : "completed",
     visibleArtifacts: artifacts.filter((artifact) => artifact.retention === "pinned" || artifact.retention === "persistent").map((artifact) => artifact.id),
     collapsedArtifacts: artifacts.filter((artifact) => artifact.retention === "collapsed").map((artifact) => artifact.id),
     discardedArtifacts: artifacts.filter((artifact) => artifact.retention === "ephemeral").map((artifact) => artifact.id),
-    resumable: true,
-    restoreMode: "snapshot",
     tags: ["runtime"],
     uiState: {
       expanded: false,
@@ -518,10 +419,6 @@ function summarizeOperation(operation: Operation) {
       return {
         title: `Confirm ${operation.confirmation.title}`,
         detail: operation.confirmation.message
-      };
-    case "subscribe_event":
-      return {
-        title: `Subscribe ${operation.subscription.source}`
       };
     case "complete_task":
       return {
@@ -611,40 +508,16 @@ async function fetchJson<T>(input: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    let payload: ProtocolAck | undefined;
+    let payload: { error?: string } | undefined;
     try {
-      payload = await response.json() as ProtocolAck;
+      payload = await response.json() as { error?: string };
     } catch {
       payload = undefined;
     }
-
-    const error = new Error(payload?.error ?? `request failed: ${response.status}`) as Error & {
-      protocolIssue?: ProtocolIssue;
-    };
-
-    if (payload?.error === "protocol mismatch") {
-      error.protocolIssue = {
-        message: "slopOS shell and bridge protocol versions do not match.",
-        expectedProtocolVersion: payload.expectedProtocolVersion,
-        receivedProtocolVersion: payload.receivedProtocolVersion
-      };
-    }
-
-    throw error;
+    throw new Error(payload?.error ?? `request failed: ${response.status}`);
   }
 
-  const payload = (await response.json()) as T & Partial<ProtocolAck>;
-  if (typeof payload.protocolVersion === "number" && payload.protocolVersion > CONTRACT_VERSIONS.bridgeProtocol) {
-    const error = new Error("protocol mismatch") as Error & { protocolIssue?: ProtocolIssue };
-    error.protocolIssue = {
-      message: "slopOS shell and bridge protocol versions do not match.",
-      expectedProtocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
-      receivedProtocolVersion: payload.protocolVersion
-    };
-    throw error;
-  }
-
-  return payload as T;
+  return (await response.json()) as T;
 }
 
 export function RuntimeProvider(props: { children: React.ReactNode }) {
@@ -656,7 +529,6 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
   const [actionLog, setActionLog] = React.useState<ActionLogEntry[]>(() => initialSnapshot?.actionLog ?? []);
   const [confirmationHistory, setConfirmationHistory] = React.useState<ConfirmationRecord[]>(() => initialSnapshot?.confirmationHistory ?? []);
   const [pendingConfirmation, setPendingConfirmation] = React.useState<PendingConfirmation | null>(null);
-  const [protocolIssue, setProtocolIssue] = React.useState<ProtocolIssue | null>(null);
   const [statusText, setStatusText] = React.useState(() => initialSnapshot?.statusText ?? "Hit ` and say what you want.");
   const [agentTurn, setAgentTurn] = React.useState<AgentTurnResponse>();
   const confirmationResolverRef = React.useRef<((approved: boolean) => void) | null>(null);
@@ -673,7 +545,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     persistShellState({
-      version: CONTRACT_VERSIONS.shellState,
+      version: 2,
       tasks,
       chronicle,
       artifacts,
@@ -684,24 +556,6 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
   }, [actionLog, artifacts, chronicle, confirmationHistory, statusText, tasks]);
 
   React.useEffect(() => {
-    const browserSessions = extractBrowserSessions(artifacts);
-    void fetchJson<ProtocolAck>("/api/browser/sync", {
-      method: "POST",
-      body: JSON.stringify({
-        protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
-        sessionKey: SHELL_SESSION_KEY,
-        sessions: browserSessions
-      })
-    }).catch((error) => {
-      const issue = (error as { protocolIssue?: ProtocolIssue } | undefined)?.protocolIssue;
-      if (issue) {
-        setProtocolIssue(issue);
-        setStatusText(issue.message);
-      }
-    });
-  }, [artifacts]);
-
-  React.useEffect(() => {
     const snapshot = extractSloposSessionSnapshot({
       statusText,
       artifacts,
@@ -709,19 +563,10 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       confirmationHistory
     });
 
-    void fetchJson<ProtocolAck>("/api/session/sync", {
+    void fetchJson<{ ok: boolean }>("/api/session/sync", {
       method: "POST",
-      body: JSON.stringify({
-        protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
-        ...snapshot
-      })
-    }).catch((error) => {
-      const issue = (error as { protocolIssue?: ProtocolIssue } | undefined)?.protocolIssue;
-      if (issue) {
-        setProtocolIssue(issue);
-        setStatusText(issue.message);
-      }
-    });
+      body: JSON.stringify(snapshot)
+    }).catch(() => undefined);
   }, [artifacts, chronicle, confirmationHistory, statusText]);
 
   const pushLog = React.useCallback((entry: Omit<ActionLogEntry, "id" | "timestamp">) => {
@@ -786,28 +631,12 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
   }, [pendingConfirmation, pushLog, settleConfirmationRecord]);
 
   const handleRuntimeError = React.useCallback((error: unknown) => {
-    const issue = (error as { protocolIssue?: ProtocolIssue } | undefined)?.protocolIssue;
-    if (issue) {
-      setProtocolIssue(issue);
-      setStatusText(issue.message);
-      pushLog({
-        kind: "error",
-        title: "Protocol mismatch",
-        detail: `expected ${issue.expectedProtocolVersion ?? "?"}, received ${issue.receivedProtocolVersion ?? "?"}`
-      });
-      return;
-    }
-
     const message = error instanceof Error ? error.message : "request failed";
     setStatusText(message);
-  }, [pushLog]);
-
-  const clearProtocolIssue = React.useCallback(() => {
-    setProtocolIssue(null);
   }, []);
 
   const refreshEvents = React.useCallback(async () => {
-    const next = await fetchJson<{ protocolVersion: number; events: EventStore }>(`/api/events?protocolVersion=${CONTRACT_VERSIONS.bridgeProtocol}`);
+    const next = await fetchJson<{ events: EventStore }>("/api/events");
     setEvents(next.events);
   }, []);
 
@@ -947,7 +776,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       result = await fetchJson<ToolEnvelope>("/api/tools", {
         method: "POST",
         body: JSON.stringify({
-          protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
+  
           name,
           args,
           options
@@ -1044,10 +873,10 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
     if (operation.type === "write_surface_module") {
       setStatusText(`Writing ${operation.module.id}`);
       try {
-        await fetchJson<ProtocolAck>("/api/surfaces/write", {
+        await fetchJson<{ ok: boolean }>("/api/surfaces/write", {
           method: "POST",
           body: JSON.stringify({
-            protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
+    
             moduleId: operation.module.id,
             path: operation.module.path,
             code: operation.module.code
@@ -1126,11 +955,6 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       return;
     }
 
-    if (operation.type === "subscribe_event") {
-      await refreshEvents();
-      return;
-    }
-
     if (operation.type === "complete_task") {
       finalizeTask(taskId, operation.summary, "completed");
       return;
@@ -1139,7 +963,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
     if (operation.type === "fail_task") {
       failTask(taskId, operation.error.message, operation.error.oneLine);
     }
-  }, [callTool, failTask, finalizeTask, pushLog, refreshEvents]);
+  }, [callTool, failTask, finalizeTask, pushLog]);
 
   const handleTurnPart = React.useCallback(async (part: TurnPart) => {
     if (part.kind === "turn_start") {
@@ -1212,10 +1036,10 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
         turnId: part.turnId
       });
       try {
-        await fetchJson<ProtocolAck>(`/api/turns/${part.turnId}/confirm`, {
+        await fetchJson<{ ok: boolean }>(`/api/turns/${part.turnId}/confirm`, {
           method: "POST",
           body: JSON.stringify({
-            protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
+    
             confirmationId: part.confirmation.id,
             approved
           })
@@ -1292,7 +1116,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       envelope = await fetchJson<TurnCreateResponse>("/api/turns", {
         method: "POST",
         body: JSON.stringify({
-          protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
+  
           intent,
           context: plannerContext,
           sessionKey: SHELL_SESSION_KEY
@@ -1314,7 +1138,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
       // write_surface_module (async file write) and create_artifact (render).
       let queue: Promise<void> = Promise.resolve();
       const close = connectTurnStream(envelope.turnId, {
-        protocolVersion: CONTRACT_VERSIONS.bridgeProtocol,
+
         onPart(part) {
           queue = queue.then(() => handleTurnPart(part)).then(() => {
             if (part.kind === "turn_complete" || part.kind === "turn_error") {
@@ -1326,11 +1150,7 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
             reject(error);
           });
         },
-        onError(issue) {
-          if (issue) {
-            setProtocolIssue(issue);
-            setStatusText(issue.message);
-          }
+        onError() {
           close();
           reject(new Error("turn stream failed"));
         }
@@ -1415,19 +1235,17 @@ export function RuntimeProvider(props: { children: React.ReactNode }) {
     actionLog,
     confirmationHistory,
     pendingConfirmation,
-    protocolIssue,
     statusText,
     agentTurn,
     submitIntent,
     respondToConfirmation,
-    clearProtocolIssue,
     getSurfaceContext,
     host,
     updateArtifactById,
     setRetentionById,
     completeTaskForTask,
     failTaskForTask
-  }), [actionLog, agentTurn, artifacts, chronicle, clearProtocolIssue, completeTaskForTask, confirmationHistory, failTaskForTask, focusedArtifact, getSurfaceContext, host, pendingConfirmation, protocolIssue, respondToConfirmation, setRetentionById, statusText, submitIntent, tasks, updateArtifactById]);
+  }), [actionLog, agentTurn, artifacts, chronicle, completeTaskForTask, confirmationHistory, failTaskForTask, focusedArtifact, getSurfaceContext, host, pendingConfirmation, respondToConfirmation, setRetentionById, statusText, submitIntent, tasks, updateArtifactById]);
 
   return (
     <RuntimeContext.Provider value={value}>

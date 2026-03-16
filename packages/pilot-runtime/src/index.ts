@@ -6,8 +6,7 @@ export type TaskStatus =
   | "blocked"
   | "completed"
   | "failed"
-  | "cancelled"
-  | "backgrounded";
+  | "cancelled";
 
 export type RetentionMode =
   | "ephemeral"
@@ -18,51 +17,9 @@ export type RetentionMode =
 
 export type ArtifactType =
   | "surface"
-  | "browser"
   | "terminal"
   | "file"
-  | "note"
-  | "device_panel"
-  | "result_card"
-  | "progress_card"
-  | "external_app"
-  | "background_job"
-  | "media";
-
-export type TaskEvent = {
-  timestamp: number;
-  message: string;
-};
-
-export type PlanStep = {
-  id: string;
-  label: string;
-  kind: "tool_call" | "ui" | "wait" | "decision" | "launch";
-  status: "pending" | "running" | "done" | "failed" | "skipped";
-  tool?: string;
-  args?: Record<string, unknown>;
-  expectedArtifacts?: ArtifactType[];
-  reversible?: boolean;
-};
-
-export type Plan = {
-  goal: string;
-  steps: PlanStep[];
-  currentStepIndex: number;
-  requiresConfirmation: boolean;
-  canRunInBackground: boolean;
-  restoreStrategy: "resume" | "replay" | "snapshot";
-};
-
-export type ConfirmationRequest = {
-  id: string;
-  taskId: string;
-  reason: string;
-  severity: "low" | "medium" | "high";
-  actionLabel: string;
-  expiresAt?: number;
-  approved: boolean | null;
-};
+  | "note";
 
 export type Task = {
   id: string;
@@ -75,13 +32,12 @@ export type Task = {
     rawInput: string;
     wakeMethod: "`" | "alt+space" | "mic" | "other";
   };
-  plan: Plan | null;
+  plan: null;
   artifacts: string[];
   chronicleEntryId: string | null;
   parentTaskId: string | null;
   priority: "foreground" | "background";
-  confirmationRequests: ConfirmationRequest[];
-  logs: TaskEvent[];
+  logs: Array<{ timestamp: number; message: string }>;
   summary: {
     title: string;
     oneLine: string;
@@ -108,7 +64,6 @@ export type Artifact = {
   isFinalOutput: boolean;
   isScaffolding: boolean;
   isRunning: boolean;
-  restoreToken?: string;
   preview?: {
     kind: "text" | "icon" | "thumbnail" | "status";
     value: string;
@@ -127,8 +82,6 @@ export type ChronicleEntry = {
   visibleArtifacts: string[];
   collapsedArtifacts: string[];
   discardedArtifacts: string[];
-  resumable: boolean;
-  restoreMode: "resume" | "replay" | "snapshot";
   tags: string[];
   uiState: {
     expanded: boolean;
@@ -201,15 +154,6 @@ export type Operation =
       };
     }
   | {
-      type: "subscribe_event";
-      subscription: {
-        id: string;
-        source: string;
-        filter?: Record<string, unknown>;
-        storeAs?: string;
-      };
-    }
-  | {
       type: "complete_task";
       summary: {
         title: string;
@@ -231,19 +175,10 @@ export type AgentTurnResponse = {
   intent: string;
   mode: "foreground" | "background";
   statusText: string;
-  taskDecision?: {
-    policy: "coexist" | "interrupt_current" | "augment_current" | "fork_from_current";
-    targetTaskId?: string;
-    reason: string;
-  };
   operations: Operation[];
 };
 
-export type PlannerSource =
-  | "cloud"
-  | "heuristic"
-  | "heuristic_no_key"
-  | "heuristic_fallback";
+export type PlannerSource = "cloud" | "fallback";
 
 type TurnPartBase = {
   id: string;
@@ -329,55 +264,13 @@ export type TurnPart =
   | TurnCompletePart;
 
 export type TurnStreamEnvelope = {
-  protocolVersion: number;
   part: TurnPart;
 };
 
 export type TurnCreateResponse = {
-  protocolVersion: number;
   turnId: string;
   taskId: string;
 };
 
-export type ProtocolAck = {
-  protocolVersion: number;
-  ok: boolean;
-  error?: string;
-  expectedProtocolVersion?: number;
-  receivedProtocolVersion?: number;
-};
-
-export type SurfaceBuildSuccess = {
-  type: "surface_build_success";
-  moduleId: string;
-  artifactId: string;
-  taskId: string;
-  path: string;
-  outputPath: string;
-  version: string;
-  exports: {
-    hasDefault: boolean;
-    hasSurfaceMeta: boolean;
-  };
-};
-
-export type SurfaceBuildError = {
-  type: "surface_build_error";
-  moduleId: string;
-  artifactId: string;
-  taskId: string;
-  path: string;
-  phase: "validate" | "compile" | "runtime";
-  message: string;
-  diagnostics: Array<{
-    message: string;
-    line?: number;
-    column?: number;
-    frame?: string;
-  }>;
-  retryable: boolean;
-};
-
 export * from "./core-surfaces";
 export * from "./core-tools";
-export * from "./contract-versions";

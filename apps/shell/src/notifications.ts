@@ -1,5 +1,4 @@
 import { useEffect, useCallback, useState } from "react";
-import { CONTRACT_VERSIONS } from "@slopos/runtime";
 
 export type Notification = {
   id: string;
@@ -20,7 +19,7 @@ export function useNotifications() {
     let retryTimer: ReturnType<typeof setTimeout>;
 
     function connect() {
-      const url = `${BRIDGE}/notifications/stream?protocolVersion=${CONTRACT_VERSIONS.bridgeProtocol}`;
+      const url = `${BRIDGE}/notifications/stream`;
       evtSource = new EventSource(url);
 
       evtSource.addEventListener("state-change", (evt) => {
@@ -39,7 +38,6 @@ export function useNotifications() {
 
           setNotifications((prev) => [...prev, notification]);
 
-          // Auto-dismiss
           setTimeout(() => {
             setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
           }, AUTO_DISMISS_MS);

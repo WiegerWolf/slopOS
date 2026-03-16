@@ -1,15 +1,14 @@
 import type { TurnPart, TurnStreamEnvelope } from "@slopos/runtime";
-import { connectVersionedEventStream, type ProtocolIssue } from "./event-stream";
+import { connectEventStream, type ProtocolIssue } from "./event-stream";
 
 export function connectTurnStream(
   turnId: string,
   handlers: {
-    protocolVersion: number;
     onPart: (part: TurnPart) => void;
     onError?: (issue?: ProtocolIssue) => void;
   }
 ) {
-  return connectVersionedEventStream<TurnStreamEnvelope>({
+  return connectEventStream<TurnStreamEnvelope>({
     path: `/api/turns/${turnId}/stream`,
     event: "part",
     onMessage: (payload) => {

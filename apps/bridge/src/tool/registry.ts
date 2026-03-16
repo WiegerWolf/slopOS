@@ -1,5 +1,5 @@
 import { getToolDescriptor } from "@slopos/runtime";
-import { appLaunchTool, appListTool, browserActiveTabTool, browserOpenTool, browserPageSnapshotTool, browserRecentEventsTool, browserSessionSnapshotTool, browserWorkspaceClaimTool, browserWorkspaceDetailTool, browserWorkspaceOpenUrlTool } from "./browser";
+import { appLaunchTool, appListTool, browserOpenTool } from "./browser";
 import { fsReadTool, fsWriteTool } from "./fs";
 import { ptyCloseTool, ptyOpenTool, ptySnapshotTool, ptyWriteTool } from "./pty";
 import { shellTool } from "./shell";
@@ -13,14 +13,7 @@ const definitions: ToolDefinition[] = [
   shellTool,
   fsReadTool,
   fsWriteTool,
-  browserActiveTabTool,
   browserOpenTool,
-  browserPageSnapshotTool,
-  browserRecentEventsTool,
-  browserSessionSnapshotTool,
-  browserWorkspaceClaimTool,
-  browserWorkspaceDetailTool,
-  browserWorkspaceOpenUrlTool,
   appLaunchTool,
   appListTool,
   audioStatusTool,

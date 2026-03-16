@@ -1,7 +1,6 @@
 import React from "react";
 import { Badge, Button, Card, Column, Row, Text } from "@slopos/ui";
 import { useHost, type SurfaceProps } from "@slopos/host";
-import { CONTRACT_VERSIONS } from "@slopos/runtime";
 
 type Provider = { id: string; name: string; baseUrl: string };
 
@@ -58,7 +57,7 @@ export default function SettingsPanel(_props: SurfaceProps<Record<string, unknow
       await fetch("/api/config", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ protocolVersion: CONTRACT_VERSIONS.bridgeProtocol, ...body }),
+        body: JSON.stringify(body),
       });
       await load();
       host.logStatus("saved");
