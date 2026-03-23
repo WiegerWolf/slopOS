@@ -1,13 +1,21 @@
 # slopOS Prototype
 
-Command-first shell prototype for an AI-operated Linux desktop.
+A prototype for an AI-operated Linux desktop: prompt-first, command-driven, and built around turning user intent into temporary UI, tool calls, and persistent artifacts.
 
-The v0 goal is not a distro. It is a prompt-first invocation surface where:
+This is not a distro. It is an experiment in what a desktop feels like when the primary interaction model is:
 
-- boot lands on a calm canvas
-- a single command materializes temporary UI
-- generated TSX surfaces can call host tools directly
-- useful artifacts persist and scaffolding disappears into the Chronicle
+- describe what you want
+- let an agent plan and act
+- keep the useful artifacts
+- discard the scaffolding
+
+## What it does
+
+slopOS combines:
+- a React shell with prompt, canvas, chronicle, and generated surfaces
+- a Bun bridge for planning, tool execution, and runtime UI generation
+- host APIs for generated interfaces to interact with the local machine
+- persistent task/artifact state so useful work survives beyond a single prompt
 
 ## Workspace
 
